@@ -30,7 +30,7 @@ errorOf c dataList =
 
 evaluateConcepts :: (Concept c, Concept h, InputSpace x, LabelSpace y) => c x y -> h x y -> (StdGen -> (x, StdGen)) -> StdGen -> Float
 evaluateConcepts concept hypothesis dataGen g = let
-  (testPoints, g1) = generateDataset 1000 g dataGen
+  (testPoints, g1) = generateDataset 10000 g dataGen
   labeledTestPoints = labelData concept testPoints
   in (errorOf hypothesis labeledTestPoints)
 
@@ -68,7 +68,7 @@ instance Concept Interval where
 
 chainGenerate :: StdGen -> (StdGen -> (x, StdGen)) -> [(x, StdGen)]
 chainGenerate g genFun = let (val, g1) = genFun g
-                         in (val, g) : [(genFun g1)]
+                         in (val, g) : (chainGenerate g1 genFun)
 
 generateDataset :: Int -> StdGen -> (StdGen -> (x, StdGen)) -> ([x], StdGen)
 generateDataset num g valGenerator = let
