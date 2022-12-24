@@ -77,13 +77,13 @@ generateDataset num g valGenerator = let
  g1 = last $ map snd samples
  in (points, g1)
 
-pacEvaluate :: (Concept c x y) => Int -> ([(x, y)] -> c x y) -> StdGen -> (StdGen -> (c x y, StdGen)) -> (StdGen -> (x, StdGen)) -> Float
+pacEvaluate :: (Concept c x y) => Int -> ([(x, y)] -> c x y) -> StdGen -> (StdGen -> (c x y, StdGen)) -> (StdGen -> (x, StdGen)) -> (Float, StdGen)
 pacEvaluate numTrain learningFun g generateConcept valGenerator = let
   (hiddenConcept, g1) = generateConcept g
   (trainPoints, g2) = generateDataset numTrain g1 valGenerator 
   labeledTrainPoints = labelData hiddenConcept trainPoints
   learnedConcept = learningFun labeledTrainPoints
-  in fst (evaluateConcepts hiddenConcept learnedConcept valGenerator g2)
+  in (evaluateConcepts hiddenConcept learnedConcept valGenerator g2)
 
 data Point = Point {xValue :: Float, yValue :: Float}
 
@@ -107,9 +107,9 @@ instance Concept Interval Point BinaryLabel where
                          in if (length positive_points) > 0
                             then let xValues = map xValue positive_points
                                      yValues = map yValue positive_points
-                                     xBounds = (Point (minimum xValues) (maximum xValues))
-                                     yBounds = (Point (minimum yValues) (maximum yValues))
-                                  in Interval xBounds yBounds label
+                                     lowerBounds = (Point (minimum xValues) (minimum yValues))
+                                     upperBounds = (Point (maximum xValues) (maximum yValues))
+                                  in Interval lowerBounds upperBounds label
                             else Interval (Point 1.0 1.0) (Point 1.0 1.0) label
 
   randomConcept label g =
@@ -123,4 +123,4 @@ main  = do
   g <- getStdGen
   let learnFn = learn Is :: [(Point, BinaryLabel)] -> Interval Point BinaryLabel
   let randomGen = randomConcept Is 
-  putStrLn $ show $ pacEvaluate 100000 learnFn g randomGen randomPoint
+  putStrLn $ show $ fst $ pacEvaluate 100 learnFn g randomGen randomPoint
