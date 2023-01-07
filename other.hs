@@ -41,16 +41,13 @@ generateDataset num valGenerator g = let
  g1 = last $ map snd samples
  in (points, g1)
 
-pacEvaluate :: Int -> StdGen -> (StdGen -> (Interval, StdGen)) -> (StdGen -> (Float, StdGen)) -> (Float, StdGen)
-pacEvaluate numTrain g generateConcept valGenerator = let
-  (hiddenConcept, g1) = generateConcept g :: (Interval, StdGen)
-  (trainPoints, g2) = generateDataset numTrain valGenerator g1 :: ([Float], StdGen)
-  labeledTrainPoints = labelData (apply hiddenConcept) trainPoints :: ([(Float, Bool)])
-  learnedConcept = learn True labeledTrainPoints :: Interval
+pacEvaluate :: (BoolPACConcept a x) => ([(x, Bool)] -> a) -> (StdGen -> (a, StdGen)) -> (StdGen -> (x, StdGen)) -> Int -> StdGen -> (Float, StdGen) 
+pacEvaluate numTrain learnFn generateConcept valGenerator g = let
+  (hiddenConcept, g1) = generateConcept g 
+  (trainPoints, g2) = generateDataset numTrain valGenerator g1 
+  labeledTrainPoints = labelData (apply hiddenConcept) trainPoints 
+  learnedConcept = learnFn labeledTrainPoints 
   in (evaluateConcepts (apply hiddenConcept) (apply learnedConcept) valGenerator g2)
-
-data BinaryLabel = Is | IsNot 
-        deriving (Eq)
 
 data Interval = Interval { lower::Float, upper::Float, label::Bool}
 
@@ -68,8 +65,8 @@ instance BoolPACConcept Interval Float where
             then Interval (minimum positive_points) (maximum positive_points) label
             else Interval (fst (dataList !! 0)) (fst (dataList !! 0)) label
 
-randomConcept :: Bool -> StdGen -> (Interval, StdGen)
-randomConcept label g =
+randomInterval :: Bool -> StdGen -> (Interval, StdGen)
+randomInterval label g =
     let (valOne, g1) = random g
         (valTwo, g2) = random g1
    in if valOne < valTwo
@@ -78,6 +75,7 @@ randomConcept label g =
 
 main = do
   g <- getStdGen
-  let randFn = randomConcept True :: StdGen -> (Interval, StdGen)
+  let randFn = randomInterval True :: StdGen -> (Interval, StdGen)
+  let learnFn = learn True :: [(Float, Bool)] -> Interval
   let randomNum = random :: StdGen -> (Float, StdGen)
-  putStrLn $ show $ pacEvaluate 100 g randFn randomNum
+  putStrLn $ show $ pacEvaluate learnFn randFn randomNum 100 g
