@@ -5,7 +5,7 @@ import System.Random
 type Concept x y = x -> y
 
 class BoolPACConcept a x where
-    learn :: Bool -> [(x, Bool)] -> a
+    learn :: [(x, Bool)] -> a
     apply :: a -> Concept x Bool
 
 labelData :: Concept x y -> [x] -> [(x, y)]
@@ -42,40 +42,80 @@ generateDataset num valGenerator g = let
  in (points, g1)
 
 pacEvaluate :: (BoolPACConcept a x) => ([(x, Bool)] -> a) -> (StdGen -> (a, StdGen)) -> (StdGen -> (x, StdGen)) -> Int -> StdGen -> (Float, StdGen) 
-pacEvaluate numTrain learnFn generateConcept valGenerator g = let
+pacEvaluate learnFn generateConcept valGenerator numTrain g = let
   (hiddenConcept, g1) = generateConcept g 
   (trainPoints, g2) = generateDataset numTrain valGenerator g1 
   labeledTrainPoints = labelData (apply hiddenConcept) trainPoints 
   learnedConcept = learnFn labeledTrainPoints 
   in (evaluateConcepts (apply hiddenConcept) (apply learnedConcept) valGenerator g2)
 
-data Interval = Interval { lower::Float, upper::Float, label::Bool}
+data Interval = Interval { lower::Float, upper::Float }
 
-isin :: Interval -> Float -> Bool
-isin (Interval lower upper label) val = (val >= lower) && (val <= upper)
+isInInterval :: Interval -> Float -> Bool
+isInInterval (Interval lower upper) val = (val >= lower) && (val <= upper)
 
 instance BoolPACConcept Interval Float where
 
-  apply = isin 
+  apply = isInInterval
 
-  learn label dataList = 
-        let positive_examples = filter (\x -> snd x == label) dataList
+  learn dataList = 
+        let positive_examples = filter (\x -> snd x) dataList
             positive_points = map (\x -> fst x) positive_examples
         in if (length positive_points) > 0
-            then Interval (minimum positive_points) (maximum positive_points) label
-            else Interval (fst (dataList !! 0)) (fst (dataList !! 0)) label
+            then Interval (minimum positive_points) (maximum positive_points) 
+            else Interval (fst (dataList !! 0)) (fst (dataList !! 0)) 
 
-randomInterval :: Bool -> StdGen -> (Interval, StdGen)
-randomInterval label g =
+randomInterval :: StdGen -> (Interval, StdGen)
+randomInterval g =
     let (valOne, g1) = random g
         (valTwo, g2) = random g1
    in if valOne < valTwo
-      then (Interval valOne valTwo label, g2)
-      else (Interval valTwo valOne label, g2)
+      then (Interval valOne valTwo, g2)
+      else (Interval valTwo valOne, g2)
+
+data Point = Point {xValue :: Float, yValue :: Float}
+
+data BoundingBox = BoundingBox { lowerCorner::Point, upperCorner::Point}
+
+randomPoint :: StdGen -> (Point, StdGen)
+randomPoint g = let (xVal, g1) = random g
+                    (yVal, g2) = random g1
+                in ((Point xVal yVal), g2)
+
+isInBox :: BoundingBox -> Point -> Bool
+isInBox (BoundingBox (Point x1 y1) (Point x2 y2)) (Point inputX inputY) = and [(inputX >= x1), (inputX <= x2), (inputY >= y1), (inputY <= y2)]
+
+instance BoolPACConcept BoundingBox Point where
+
+  apply = isInBox
+
+  learn dataList = 
+        let positive_examples = filter (\x -> snd x) dataList
+            positive_points = map (\x -> fst x) positive_examples
+        in if (length positive_points) > 0
+            then let xValues = map xValue positive_points
+                     yValues = map yValue positive_points
+                     lowerBounds = (Point (minimum xValues) (minimum yValues))
+                     upperBounds = (Point (maximum xValues) (maximum yValues))
+                  in BoundingBox lowerBounds upperBounds 
+            else BoundingBox (Point 1.0 1.0) (Point 1.0 1.0) 
+
+randomBox :: StdGen -> (BoundingBox, StdGen)
+randomBox g =
+    let ((Point x1 y1), g1) = randomPoint g
+        ((Point x2 y2), g2) = randomPoint g1
+        (xmin, xmax) = if x1 <= x2 then (x1, x2) else (x2, x1)
+        (ymin, ymax) = if y1 <= y2 then (y1, y2) else (y2, y1)
+   in ((BoundingBox (Point xmin ymin) (Point xmax ymax)), g2)
 
 main = do
   g <- getStdGen
-  let randFn = randomInterval True :: StdGen -> (Interval, StdGen)
-  let learnFn = learn True :: [(Float, Bool)] -> Interval
-  let randomNum = random :: StdGen -> (Float, StdGen)
+  --let randFn = randomInterval :: StdGen -> (Interval, StdGen)
+  --let learnFn = learn :: [(Float, Bool)] -> Interval
+  --let randomNum = random :: StdGen -> (Float, StdGen)
+  --
+  let randFn = randomBox :: StdGen -> (BoundingBox, StdGen)
+  let learnFn = learn :: [(Point, Bool)] -> BoundingBox
+  let randomNum = randomPoint :: StdGen -> (Point, StdGen)
+
   putStrLn $ show $ pacEvaluate learnFn randFn randomNum 100 g
