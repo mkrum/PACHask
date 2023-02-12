@@ -1,9 +1,20 @@
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
-import System.Random
-import qualified Data.Set as Set
+import qualified Data.Set      as Set
+import           System.Random
+
+type RandGen x = (StdGen -> (x, StdGen))
+
+chainGenerate :: Int -> RandGen x -> RandGen [x]
+chainGenerate num valGenerator g = let
+ chainGenerate genFun g = (val, g) : (chainGenerate genFun g1)
+                            where (val, g1) = genFun g
+ samples = take num (chainGenerate valGenerator g)
+ points = map fst samples
+ g1 = last $ map snd samples
+ in (points, g1)
 
 type Concept x y = x -> y
 
@@ -21,36 +32,31 @@ isIncorrect :: (Eq y) => Concept x y -> (x, y) -> Bool
 isIncorrect = ((not .) . isCorrect)
 
 errorOf :: (Eq y) => Concept x y -> [(x, y)] -> Float
-errorOf c dataList = 
+errorOf c dataList =
   let incorrectList = filter (\x -> isIncorrect c x) dataList
       total = (fromIntegral (length dataList))::Float
       totalIncorrect = (fromIntegral (length incorrectList))::Float
   in totalIncorrect / total
 
-evaluateConcepts :: (Eq y) => Concept x y -> Concept x y -> (StdGen -> (x, StdGen)) -> StdGen -> (Float, StdGen)
+evaluateConcepts :: (Eq y) => Concept x y -> Concept x y -> RandGen x -> RandGen Float
 evaluateConcepts concept hypothesis dataGen g = let
-  (testPoints, g1) = generateDataset 10000 dataGen g
+  (testPoints, g1) = chainGenerate 10000 dataGen g
   labeledTestPoints = labelData concept testPoints
   in ((errorOf hypothesis labeledTestPoints), g1)
 
-chainGenerate :: (StdGen -> (x, StdGen)) -> StdGen -> [(x, StdGen)]
-chainGenerate genFun g = let (val, g1) = genFun g
-                         in (val, g) : (chainGenerate genFun g1)
-
-generateDataset :: Int -> (StdGen -> (x, StdGen)) -> StdGen -> ([x], StdGen)
-generateDataset num valGenerator g = let
- samples = take num (chainGenerate valGenerator g)
- points = map fst samples
- g1 = last $ map snd samples
- in (points, g1)
-
-pacEvaluate :: (BoolPACConcept a x) => ([(x, Bool)] -> a) -> (StdGen -> (a, StdGen)) -> (StdGen -> (x, StdGen)) -> Int -> StdGen -> (Float, StdGen) 
+pacEvaluate :: (BoolPACConcept a x) => ([(x, Bool)] -> a) -> RandGen a -> RandGen x -> Int -> RandGen Float
 pacEvaluate learnFn generateConcept valGenerator numTrain g = let
-  (hiddenConcept, g1) = generateConcept g 
-  (trainPoints, g2) = generateDataset numTrain valGenerator g1 
-  labeledTrainPoints = labelData (apply hiddenConcept) trainPoints 
-  learnedConcept = learnFn labeledTrainPoints 
+  (hiddenConcept, g1) = generateConcept g
+  (trainPoints, g2) = chainGenerate numTrain valGenerator g1
+  labeledTrainPoints = labelData (apply hiddenConcept) trainPoints
+  learnedConcept = learnFn labeledTrainPoints
   in (evaluateConcepts (apply hiddenConcept) (apply learnedConcept) valGenerator g2)
+
+estimateDelta:: Int -> Float -> RandGen Float -> StdGen -> Float
+estimateDelta n epsilon evalFn g = let
+  (results, g1) = chainGenerate n evalFn g
+  successes = filter (<= epsilon) results
+  in fromIntegral (length successes) / (fromIntegral n)
 
 data Interval = Interval { lower::Float, upper::Float }
 
@@ -61,14 +67,14 @@ instance BoolPACConcept Interval Float where
 
   apply = isInInterval
 
-  learn dataList = 
+  learn dataList =
         let positive_examples = filter (\x -> snd x) dataList
             positive_points = map (\x -> fst x) positive_examples
         in if (length positive_points) > 0
-            then Interval (minimum positive_points) (maximum positive_points) 
-            else Interval (fst (dataList !! 0)) (fst (dataList !! 0)) 
+            then Interval (minimum positive_points) (maximum positive_points)
+            else Interval (fst (dataList !! 0)) (fst (dataList !! 0))
 
-randomInterval :: StdGen -> (Interval, StdGen)
+randomInterval :: RandGen Interval
 randomInterval g =
     let (valOne, g1) = random g
         (valTwo, g2) = random g1
@@ -80,7 +86,7 @@ data Point = Point {xValue :: Float, yValue :: Float}
 
 data BoundingBox = BoundingBox { lowerCorner::Point, upperCorner::Point}
 
-randomPoint :: StdGen -> (Point, StdGen)
+randomPoint :: RandGen Point
 randomPoint g = let (xVal, g1) = random g
                     (yVal, g2) = random g1
                 in ((Point xVal yVal), g2)
@@ -92,7 +98,7 @@ instance BoolPACConcept BoundingBox Point where
 
   apply = isInBox
 
-  learn dataList = 
+  learn dataList =
         let positive_examples = filter (\x -> snd x) dataList
             positive_points = map (\x -> fst x) positive_examples
         in if (length positive_points) > 0
@@ -100,10 +106,10 @@ instance BoolPACConcept BoundingBox Point where
                      yValues = map yValue positive_points
                      lowerBounds = (Point (minimum xValues) (minimum yValues))
                      upperBounds = (Point (maximum xValues) (maximum yValues))
-                  in BoundingBox lowerBounds upperBounds 
-            else BoundingBox (Point 1.0 1.0) (Point 1.0 1.0) 
+                  in BoundingBox lowerBounds upperBounds
+            else BoundingBox (Point 1.0 1.0) (Point 1.0 1.0)
 
-randomBox :: StdGen -> (BoundingBox, StdGen)
+randomBox :: RandGen BoundingBox
 randomBox g =
     let ((Point x1 y1), g1) = randomPoint g
         ((Point x2 y2), g2) = randomPoint g1
@@ -119,10 +125,10 @@ data Literal = Used | Negated | Unused
              deriving (Eq, Show)
 
 evalLiteral :: Literal -> Bool -> Bool
-evalLiteral Unused _ = True
-evalLiteral Negated True = False
+evalLiteral Unused _      = True
+evalLiteral Negated True  = False
 evalLiteral Negated False = True
-evalLiteral Used x = x
+evalLiteral Used x        = x
 
 satisfiesLiteral :: LiteralVector -> BoolVector -> Bool
 satisfiesLiteral [] [] = True
@@ -130,28 +136,27 @@ satisfiesLiteral l [] = False
 satisfiesLiteral [] b = False
 satisfiesLiteral (l:otherLiterals) (b:otherBools) = (evalLiteral l b) && satisfiesLiteral otherLiterals otherBools
 
-randomLiteral :: StdGen -> (Literal, StdGen)
-randomLiteral g = let (val, g1) = random g :: (Float, StdGen)
-                in case val of
-                     val | val <= 0.1 -> (Used, g1)
-                         | val <= 0.2 -> (Negated, g1)
-                         | otherwise -> (Unused, g1)
+randomLiteral :: RandGen Literal
+randomLiteral g = case random g :: (Float, StdGen) of
+                    (val, g1) | val <= 0.1 -> (Used, g1)
+                              | val <= 0.2 -> (Negated, g1)
+                              | otherwise -> (Unused, g1)
 
-randomLiteralVector :: Int -> StdGen -> (LiteralVector, StdGen)
-randomLiteralVector n = generateDataset n randomLiteral
+randomLiteralVector :: Int -> RandGen LiteralVector
+randomLiteralVector n = chainGenerate n randomLiteral
 
-randomBool :: StdGen -> (Bool, StdGen)
+randomBool :: RandGen Bool
 randomBool g = let (val, g1) = random g :: (Float, StdGen)
                 in (val <= 0.5, g1)
 
-randomBoolVector :: Int -> StdGen -> (BoolVector, StdGen)
-randomBoolVector n = generateDataset n randomBool
+randomBoolVector :: Int -> RandGen BoolVector
+randomBoolVector n = chainGenerate n randomBool
 
 instance BoolPACConcept LiteralVector BoolVector where
 
   apply = satisfiesLiteral
 
-  learn dataList = 
+  learn dataList =
           let n = length (fst $ dataList !! 0)
               positive_examples = filter (\x -> snd x) dataList
               positive_points = map (\x -> fst x) positive_examples
@@ -166,16 +171,21 @@ instance BoolPACConcept LiteralVector BoolVector where
 
 main = do
   g <- getStdGen
+
   --let randFn = randomInterval :: StdGen -> (Interval, StdGen)
   --let learnFn = learn :: [(Float, Bool)] -> Interval
   --let randomNum = random :: StdGen -> (Float, StdGen)
-  --
+
   --let randFn = randomBox :: StdGen -> (BoundingBox, StdGen)
   --let learnFn = learn :: [(Point, Bool)] -> BoundingBox
   --let randomNum = randomPoint :: StdGen -> (Point, StdGen)
-  --
-  let randFn = randomLiteralVector 10 :: StdGen -> (LiteralVector, StdGen)
-  let learnFn = learn :: [(BoolVector, Bool)] -> LiteralVector
-  let randomNum = randomBoolVector 10 :: StdGen -> (BoolVector, StdGen)
 
-  putStrLn $ show $ pacEvaluate learnFn randFn randomNum 10 g
+  let randFn = randomLiteralVector 16 :: StdGen -> (LiteralVector, StdGen)
+  let learnFn = learn :: [(BoolVector, Bool)] -> LiteralVector
+  let randomNum = randomBoolVector 16 :: StdGen -> (BoolVector, StdGen)
+
+  let vals = [10,20..600]
+  let resultsGen = pacEvaluate learnFn randFn randomNum
+  let results = map (\v -> estimateDelta 1000 0.01 (resultsGen v) (mkStdGen 1234)) vals
+
+  putStr $ foldr (++) "\n" (map (\(r, v) -> (show r) ++ " " ++ (show v) ++ "\n") (zip results vals))

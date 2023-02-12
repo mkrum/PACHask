@@ -1,0 +1,146 @@
+
+#+TITLE: PAC Learning By Example In Haskell
+#+OPTIONS: toc:nil author:nil timestamp:nil 
+
+[[https://cs.nyu.edu/~mohri/mlbook/][Link to the book]]
+
+* Probably Approximately Correct (PAC) Learning
+PAC learning is a powerful framework for thinking about machine learning as well
+as the namesake for this website. 
+
+** Setup
+
+First, we need some imports and a utility function for generating some random
+data. 
+#+BEGIN_SRC haskell
+{-# LANGUAGE MultiParamTypeClasses #-}                                                                                                                                                      
+{-# LANGUAGE TypeSynonymInstances #-}                                                                                                                                                       
+{-# LANGUAGE FlexibleInstances #-}                                                                                                                                                          
+                                                                                                                                                                                            
+import System.Random                                                                                                                                                                        
+import qualified Data.Set as Set                                                                                                                                                            
+                                                                                                                                                                                            
+type RandGen x = (StdGen -> (x, StdGen))                                                                                                                                                    
+                                                                                                                                                                                            
+chainGenerate :: Int -> RandGen x -> RandGen [x]                                                                                                                                            
+chainGenerate num valGenerator g = let                                                                                                                                                      
+ chainGenerate genFun g = (val, g) : (chainGenerate genFun g1)                                                                                                                              
+                            where (val, g1) = genFun g                                                                                                                                      
+ samples = take num (chainGenerate valGenerator g)                                                                                                                                          
+ points = map fst samples                                                                                                                                                                   
+ g1 = last $ map snd samples                                                                                                                                                                
+ in (points, g1)                                                                                                                                                                            
+
+#+END_SRC
+What we want to learn is some concept $c$ within a larger space of concepts,
+$\mathcal{C}$. A concept is just a function that maps a instance of the input
+space $x \in \mathcal{X}$ to an instance of the output space $y \in
+\mathcal{y}$. In other words, 
+
+\begin{equation}
+c: \mathcal{X} \rightarrow \mathcal{Y}
+\end{equation}
+
+And in haskell, 
+#+BEGIN_SRC haskell
+type Concept x y = x -> y
+#+END_SRC
+
+However, we don't have typically do not have access to the underlying concept
+class. Instead, we have a seperate of concepts that also define a mapping from
+$\mathcal{X}$ to $\mathcal{Y}$. We refer to this as our hypothesis space,
+$\mathcal{H}$.
+Our learning algorithm will take a set of samples $(x, y)$ and return a
+hypothesis $h \in \mathcal{H}$. We want t
+
+#+BEGIN_SRC haskell
+class BoolPACConcept a x where                                                                                                                                                              
+    learn :: [(x, Bool)] -> a                                                                                                                                                               
+    apply :: a -> Concept x Bool  
+#+END_SRC
+
+#+BEGIN_SRC haskell
+labelData :: Concept x y -> [x] -> [(x, y)]                                                                                                                                                 
+labelData concept dataList = map (\x -> (x, concept x)) dataList                                                                                                                            
+
+isCorrect :: (Eq y) => Concept x y -> (x, y) -> Bool                                                                                                                                        
+isCorrect c (x, y) = (c x) == y                                                                                                                                                             
+
+isIncorrect :: (Eq y) => Concept x y -> (x, y) -> Bool                                                                                                                                      
+isIncorrect = ((not .) . isCorrect)                                                                                                                                                         
+#+END_SRC
+
+#+BEGIN_SRC haskell
+errorOf :: (Eq y) => Concept x y -> [(x, y)] -> Float                                                                                                                                       
+errorOf c dataList =                                                                                                                                                                        
+  let incorrectList = filter (\x -> isIncorrect c x) dataList                                                                                                                               
+      total = (fromIntegral (length dataList))::Float                                                                                                                                       
+      totalIncorrect = (fromIntegral (length incorrectList))::Float                                                                                                                         
+  in totalIncorrect / total 
+#+END_SRC
+
+#+BEGIN_SRC haskell
+evaluateConcepts :: (Eq y) => Concept x y -> Concept x y -> RandGen x -> RandGen Float                                                                                                      
+evaluateConcepts concept hypothesis dataGen g = let                                                                                                                                         
+  (testPoints, g1) = chainGenerate 10000 dataGen g                                                                                                                                          
+  labeledTestPoints = labelData concept testPoints                                                                                                                                          
+  in ((errorOf hypothesis labeledTestPoints), g1)  
+#+END_SRC
+
+#+BEGIN_SRC haskell
+pacEvaluate :: (BoolPACConcept a x) => ([(x, Bool)] -> a) -> RandGen a -> RandGen x -> Int -> RandGen Float                                                                                  48 pacEvaluate learnFn generateConcept valGenerator numTrain g = let                                                                                                                           
+  (hiddenConcept, g1) = generateConcept g                                                                                                                                                   
+  (trainPoints, g2) = chainGenerate numTrain valGenerator g1                                                                                                                                
+  labeledTrainPoints = labelData (apply hiddenConcept) trainPoints                                                                                                                          
+  learnedConcept = learnFn labeledTrainPoints                                                                                                                                               
+  in (evaluateConcepts (apply hiddenConcept) (apply learnedConcept) valGenerator g2) 
+#+END_SRC
+
+#+BEGIN_SRC haskell
+estimateDelta:: Int -> Float -> RandGen Float -> StdGen -> Float                                                                                                                            
+estimateDelta n epsilon evalFn g = let                                                                                                                                                      
+  (results, g1) = chainGenerate n evalFn g                                                                                                                                                  
+  successes = filter (<= epsilon) results                                                                                                                                                   
+  in fromIntegral (length successes) / (fromIntegral n)  
+#+END_SRC
+
+#+BEGIN_SRC haskell
+data Interval = Interval { lower::Float, upper::Float }                                                                                                                                      62                                                                                                                                                                                             
+
+isInInterval :: Interval -> Float -> Bool                                                                                                                                                   
+isInInterval (Interval lower upper) val = (val >= lower) && (val <= upper) 
+#+END_SRC
+
+#+BEGIN_SRC haskell
+instance BoolPACConcept Interval Float where                                                                                                                                                
+                                                                                                                                                                                            
+  apply = isInInterval                                                                                                                                                                      
+                                                                                                                                                                                            
+  learn dataList =                                                                                                                                                                          
+        let positive_examples = filter (\x -> snd x) dataList                                                                                                                               
+            positive_points = map (\x -> fst x) positive_examples                                                                                                                           
+        in if (leng 77 randomInterval :: RandGen Interval                                                                                                                                                          
+#+END_SRC
+
+#+BEGIN_SRC haskell
+  randomInterval :: RandGen Interval
+  randomInterval g =                                                                                                                                                                          
+      let (valOne, g1) = random g                                                                                                                                                             
+	  (valTwo, g2) = random g1                                                                                                                                                            
+     in if valOne < valTwo                                                                                                                                                                    
+	then (Interval valOne valTwo, g2)                                                                                                                                                     
+	else (Interval valTwo valOne, g2) th positive_points) > 0                                                                                                                                                  
+	  then Interval (minimum positive_points) (maximum positive_points)                                                                                                               
+	  else Interval (fst (dataList !! 0)) (fst (dataList !! 0)) 
+#+END_SRC
+
+
+
+
+
+
+
+
+
+
+
