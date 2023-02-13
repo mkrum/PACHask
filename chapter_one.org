@@ -95,5 +95,24 @@ set of 2D points, and return a rectangle $R'$, with a low enough error compared
 to actual concept defined by $R$.
 
 We can think of the error between two rectangles in terms of the probability
-weighted areas 
+weighted areas where $R'$ does not agree with $R$. The false positive region is
+all of $R'$ that is not in $R$. The false negative region is all of $R$ that is
+not in $R'$. 
+
+We can define our algorithm, $\mathcal{A}$, simply to find the minimum spanning
+$R$ that covers all of the positive points. By definition, this box cannot
+return any false positives, since the box must by definition be contained in
+$R$. So we only need to think about the false negatives. 
+
+Let's think about those false negatives. For each edge, we can think about the
+gap between the $R$ edge and the $R'$ edge. There are 4 of those edges for a rectangle
+
+\begin{aligned}
+\mathbb{P}_{S \sim \mathcal{D}} [ R(R_S) > \epsilon] &
+\le \mathbb{P}_{S \sim \mathcal{D}} [ \cup^4_{i = 1} \{ R_S \cap r_i = \emptyset \}] \\
+& \le \sum^4_{i=1} \mathbb{P}_{S \sim \mathcal{D}} [ \{ R_S \cap r_i = \emptyset \}] \\
+& \le 4 ( 1 - \epsilon / 4)^m \\
+& \le 4 \text{exp}(-m \epsilon / 4) \\
+\end{aligned}
+
 
