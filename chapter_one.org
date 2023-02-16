@@ -104,15 +104,69 @@ $R$ that covers all of the positive points. By definition, this box cannot
 return any false positives, since the box must by definition be contained in
 $R$. So we only need to think about the false negatives. 
 
-Let's think about those false negatives. For each edge, we can think about the
-gap between the $R$ edge and the $R'$ edge. There are 4 of those edges for a rectangle
+First, let's think about the probability mass of R. If $\mathbb{P}(R) \le
+\epsilon$, then by definition our algorithm will not have an error $> \epsilon$,
+since the probability of even having the ability to create a false negative is
+below $\epsilon$.
+
+Let's think about those false negatives that might happen. For each edge, we can think about the
+gap between the $R$ edge and the $R'$ edge. For each edge there
+
+There are four dimensions in which $R_S$ can fall short of $R$. For each of these
+dimensions, let's imagine a region, $r_i$, in which $P(r_i) \ge
+\frac{\epsilon}{4}$. If the edge of $R_S$ falls within this region, then the
+total error contributed from that dimension is less then
+$\frac{\epsilon}{4}$. If $R_S$ falls within none of these regions, then the total
+area must be at least $\epsilon$.
+
+We can use this event to find a lower bound on the error. The probability of
+getting an error greater than $\epsilon$ is at least the probability of this
+event occurring. In other words, the probability of the error being more than
+epsilon is at least the probability that $R_S$ intersects with none of the
+specified $r_i$ regions. Mathematically,
+
+\begin{equation}
+\mathbb{P} [ R(R_S) > \epsilon ] \le \mathbb{P} [ \cup^4_{i = 1} \{ R_S \cap r_i = \emptyset \} ]
+\end{equation}
+
+We can simplify this using a union bound. For any union of multiple events, the
+total probability is bounded by the sum of the individual probabilities. In
+other words,
+
+\begin{equation}
+\mathbb{P} [ \cup^4_{i = 1} \{ R_S \cap r_i = \emptyset \} ] \le \sum^4_{i = 1} \mathbb{P} [ \{ R_S \cap r_i = \emptyset \} ]
+\end{equation}
+
+So what is the probability of $\{ R_S \cap r_i \ne \emptyset \}$? Well, that is
+simply the probability that none of our samples from $\mathcal{D}$ land in
+$r_i$. We know that, by definition, the probability of a sample falling in $r_i$
+is greater than or equal to $\frac{\epsilon}{4}$. So, conversely, the
+probability of a sample not falling in $r_i$ is $1 - \frac{\epsilon}{4}$. So,
+the probability of all m samples not falling in $r_i$ is,
+
+\begin{equation}
+\mathbb{P} [ \{ R_S \cap r_i = \emptyset \} ] \le (1 - \frac{\epsilon}{4})^m
+\end{equation}
+
+One last fun fact, we know that $1 - x \le \exp^{-x}$. So, from above we can
+say,
+
+\begin{equation}
+(1 - \frac{\epsilon}{4})^m \le \exp(-m \epsilon / 4)
+\end{equation}
+
+We can now put this all together now and say,
 
 \begin{aligned}
-\mathbb{P}_{S \sim \mathcal{D}} [ R(R_S) > \epsilon] &
-\le \mathbb{P}_{S \sim \mathcal{D}} [ \cup^4_{i = 1} \{ R_S \cap r_i = \emptyset \}] \\
-& \le \sum^4_{i=1} \mathbb{P}_{S \sim \mathcal{D}} [ \{ R_S \cap r_i = \emptyset \}] \\
-& \le 4 ( 1 - \epsilon / 4)^m \\
-& \le 4 \text{exp}(-m \epsilon / 4) \\
+\mathbb{P} [ R(R_S) > \epsilon ] & \le \mathbb{P} [ \cup^4_{i = 1} \{ R_S \cap r_i = \emptyset \} ] \\
+& \le \sum^4_{i = 1} \mathbb{P} [ \{ R_S \cap r_i = \emptyset \} ] \\
+& \le \sum^4_{i = 1} (1 - \frac{\epsilon}{4})^m \\
+& \le 4 (1 - \frac{\epsilon}{4})^m \\
+& \le 4 \exp(-m \epsilon / 4) \\
 \end{aligned}
 
+We now have a relationship between our probability of success, the error and
+$m$. If we want the probability of success
 
+
+\exp(-m \epsilon / 4) \le \delta
