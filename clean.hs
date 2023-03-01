@@ -22,7 +22,7 @@ errorOf concept dataList =
       total = (fromIntegral . length) evalList
   in (sum evalList) / total
 
-generateDataset :: (RandomGen g) => Int -> Rand g x -> Rand g [x]
+generateDataset :: Int -> Distribution x -> Distribution [x]
 generateDataset num valGenerator = sequence (replicate num valGenerator)
 
 pacEvaluate :: PACTuple x Bool -> Int -> IO Float
@@ -94,10 +94,65 @@ learnBoundingBox dataList =
                 in (isInBox (BoundingBox lowerBounds upperBounds))
           else (\x -> False)
 
+type BoolVector = [Bool]
+type LiteralVector = [Literal]
+
+data Literal = Used | Negated | Unused
+             deriving (Eq, Show)
+
+evalLiteral :: Literal -> Bool -> Bool
+evalLiteral Unused _      = True
+evalLiteral Negated True  = False
+evalLiteral Negated False = True
+evalLiteral Used x        = x
+
+satisfiesLiteral :: LiteralVector -> BoolVector -> Bool
+satisfiesLiteral [] [] = True
+satisfiesLiteral l [] = False
+satisfiesLiteral [] b = False
+satisfiesLiteral (l:otherLiterals) (b:otherBools) = (evalLiteral l b) && satisfiesLiteral otherLiterals otherBools
+
+floatToLiterval :: Float -> Literal
+floatToLiterval val 
+  | val <= 0.1 = Used
+  | val <= 0.2 = Negated
+  | otherwise = Unused
+
+randomLiteral :: Distribution Literal
+randomLiteral = do
+    val <- getRandom
+    return (floatToLiterval val)
+
+randomLiteralVector :: Int -> Distribution LiteralVector
+randomLiteralVector n = generateDataset n randomLiteral
+
+randomBoolVector :: Int -> Distribution BoolVector
+randomBoolVector n = generateDataset n getRandom
+
+randomBoolVectorFn :: Int -> Distribution (Concept BoolVector Bool)
+randomBoolVectorFn n = do
+        random_val <- (randomLiteralVector n) 
+        return (satisfiesLiteral random_val)
+
+learnBoolVector dataList =
+          let n = length (fst $ dataList !! 0)
+              positive_examples = filter (\x -> snd x) dataList
+              positive_points = map (\x -> fst x) positive_examples
+        in if (length positive_points) > 0
+            then let assignments = [ Set.fromList $ map (!! i) positive_points | i <- [0..n-1]]
+                     getAssignment assign = case assign of
+                                        assign | (length assign) == 2 -> Unused
+                                               | True `elem` assign -> Used
+                                               | otherwise -> Negated
+                  in (satisfiesLiteral (map getAssignment assignments))
+        else (\x -> False)
+
 main = do
 
   let intervalPAC = (getRandom, randomIntervalFn, learnInterval) :: PACTuple Float Bool
-  let intervalBox = (randomPoint, randomBoxFn, learnBoundingBox) :: PACTuple Point Bool
-  val <- pacEvaluate intervalBox 10
+  let boxPAC = (randomPoint, randomBoxFn, learnBoundingBox) :: PACTuple Point Bool
+  let boolPAC = (randomBoolVector 8, randomBoolVectorFn 8, learnBoolVector) :: PACTuple BoolVector Bool
+
+  val <- pacEvaluate boolPAC 10
 
   putStrLn (show val)
