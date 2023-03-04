@@ -1,11 +1,14 @@
+
 import System.Random
 import Control.Monad.Random
-import qualified Data.Set as Set
 
 type Concept x y = x -> y
 type Distribution x = Rand StdGen x
 
-type PACTuple x y = (Distribution x, Distribution (Concept x y), [(x, y)] -> Concept x y)
+sampleFrom :: Int -> Distribution x -> Distribution [x]
+sampleFrom m dist = sequence (replicate m dist)
+
+type PACTuple x y = (Distribution x, Distribution (Concept x y), [(x, y)] -> Concept x y, Float)
 
 labelData :: Concept x y -> [x] -> [(x, y)]
 labelData concept dataList = map (\x -> (x, concept x)) dataList
@@ -18,81 +21,83 @@ isIncorrect = ((not .) . isCorrect)
 
 errorOf :: (Eq y) => Concept x y -> [(x, y)] -> Float
 errorOf concept dataList = 
-  let evalList = map (\x -> if isIncorrect concept x then 1.0 else 0.0) dataList
-      total = (fromIntegral . length) evalList
-  in (sum evalList) / total
+    let evalList = map (\x -> if isIncorrect concept x then 1.0 else 0.0) dataList
+        total = (fromIntegral . length) evalList
+     in (sum evalList) / total
 
-generateDataset :: Int -> Distribution x -> Distribution [x]
-generateDataset num valGenerator = sequence (replicate num valGenerator)
+getPositivePoints :: [(x, Bool)] -> [x]
+getPositivePoints = (map fst) . (filter snd)
 
-pacEvaluate :: PACTuple x Bool -> Int -> IO Float
-pacEvaluate (valGenerator, generateConcept, learnFn) numTrain = do
+pacEvaluate :: PACTuple x Bool -> Int -> IO Bool
+pacEvaluate (distribution, generateConcept, learnFn, epsilon) m = do
 
   hiddenConcept <- evalRandIO (generateConcept)
-  trainPoints <- evalRandIO (generateDataset numTrain valGenerator)
-  testPoints <- evalRandIO (generateDataset 10000 valGenerator)
+  trainPoints <- evalRandIO (sampleFrom m distribution)
+  testPoints <- evalRandIO (sampleFrom 10000 distribution)
 
   let labeledTrainPoints = labelData hiddenConcept trainPoints
-  let labeledTestPoints = labelData hiddenConcept testPoints
+      labeledTestPoints = labelData hiddenConcept testPoints
+      measuredError = errorOf (learnFn labeledTrainPoints) labeledTestPoints
+      success = measuredError <= epsilon
+  return success
 
-  let learnedConcept = learnFn labeledTrainPoints 
+estimateDelta :: PACTuple x Bool -> Int -> Int -> IO Float
+estimateDelta pac m n = do
+  val <- sequence [pacEvaluate pac m | x <- [1..n]]
+  let succcess = map (\x -> if x then 1.0 else 0.0) val
+  let mean = (sum succcess) / (fromIntegral n)
+  return mean
 
-  let epsilon = errorOf learnedConcept labeledTestPoints
-  return epsilon
+isInInterval :: Float -> Float -> Float -> Bool
+isInInterval lower upper val = (val >= lower) && (val <= upper)
 
-data Interval = Interval { lower::Float, upper::Float }
-
-isInInterval :: Interval -> Float -> Bool
-isInInterval (Interval lower upper) val = (val >= lower) && (val <= upper)
+pointsToInterval :: [Float] -> Concept Float Bool
+pointsToInterval [] = \x -> False 
+pointsToInterval positive_points = 
+        isInInterval (minimum positive_points) (maximum positive_points)
 
 learnInterval :: [(Float, Bool)] -> Concept Float Bool
-learnInterval dataList = 
-    let positive_examples = filter (\x -> snd x) dataList
-        positive_points = map (\x -> fst x) positive_examples
-    in if (length positive_points) > 0
-        then isInInterval (Interval (minimum positive_points) (maximum positive_points) )
-        else (\x -> False)
+learnInterval = (pointsToInterval . getPositivePoints)
 
-randomIntervalFn :: Distribution (Float -> Bool) 
-randomIntervalFn = do
+randomBounds :: Distribution (Float, Float)
+randomBounds = do
     valOne <- getRandom
     valTwo <- getRandom
     if valOne < valTwo
-        then return (isInInterval (Interval valOne valTwo))
-        else return (isInInterval (Interval valTwo valOne))
+        then return (valOne, valTwo)
+        else return (valTwo, valOne)
 
-data Point = Point {xValue :: Float, yValue :: Float}
+randomInterval :: Distribution (Float -> Bool) 
+randomInterval = do
+    (lower, upper) <- randomBounds
+    return (isInInterval lower upper)
 
-data BoundingBox = BoundingBox { lowerCorner::Point, upperCorner::Point}
+type Point = (Float, Float)
+
+boxInterval :: Concept Float Bool -> Concept Float Bool -> Concept Point Bool
+boxInterval xInterval yInterval = \(x,y) -> ((xInterval x) && (yInterval y))
 
 randomBoxFn :: Distribution (Point -> Bool)
 randomBoxFn = do 
-    (Point x1 y1) <- randomPoint
-    (Point x2 y2) <- randomPoint 
-    let (xmin, xmax) = if x1 <= x2 then (x1, x2) else (x2, x1)
-    let (ymin, ymax) = if y1 <= y2 then (y1, y2) else (y2, y1)
-    return (isInBox (BoundingBox (Point xmin ymin) (Point xmax ymax)))
+    xInterval <- randomInterval
+    yInterval <- randomInterval
+    return (boxInterval xInterval yInterval)
 
 randomPoint :: Distribution Point
 randomPoint = do
     valOne <- getRandom
     valTwo <- getRandom
-    return (Point valOne valTwo)
+    return (valOne, valTwo)
 
-isInBox :: BoundingBox -> Point -> Bool
-isInBox (BoundingBox (Point x1 y1) (Point x2 y2)) (Point inputX inputY) = and [(inputX >= x1), (inputX <= x2), (inputY >= y1), (inputY <= y2)]
+pointsToBox :: [Point] -> (Point -> Bool)
+pointsToBox [] = \x -> False
+pointsToBox positive_points = 
+        let xInterval = pointsToInterval (map fst positive_points)
+            yInterval = pointsToInterval (map snd positive_points)
+        in boxInterval xInterval yInterval
 
 learnBoundingBox :: [(Point, Bool)] -> Concept Point Bool
-learnBoundingBox dataList =
-      let positive_examples = filter (\x -> snd x) dataList
-          positive_points = map (\x -> fst x) positive_examples
-      in if (length positive_points) > 0
-          then let xValues = map xValue positive_points
-                   yValues = map yValue positive_points
-                   lowerBounds = (Point (minimum xValues) (minimum yValues))
-                   upperBounds = (Point (maximum xValues) (maximum yValues))
-                in (isInBox (BoundingBox lowerBounds upperBounds))
-          else (\x -> False)
+learnBoundingBox = (pointsToBox . getPositivePoints)
 
 type BoolVector = [Bool]
 type LiteralVector = [Literal]
@@ -123,36 +128,41 @@ randomLiteral = do
     val <- getRandom
     return (floatToLiterval val)
 
-randomLiteralVector :: Int -> Distribution LiteralVector
-randomLiteralVector n = generateDataset n randomLiteral
-
 randomBoolVector :: Int -> Distribution BoolVector
-randomBoolVector n = generateDataset n getRandom
+randomBoolVector n = sampleFrom n getRandom
 
 randomBoolVectorFn :: Int -> Distribution (Concept BoolVector Bool)
 randomBoolVectorFn n = do
-        random_val <- (randomLiteralVector n) 
+        random_val <- (sampleFrom n randomLiteral) 
         return (satisfiesLiteral random_val)
 
-learnBoolVector dataList =
-          let n = length (fst $ dataList !! 0)
-              positive_examples = filter (\x -> snd x) dataList
-              positive_points = map (\x -> fst x) positive_examples
-        in if (length positive_points) > 0
-            then let assignments = [ Set.fromList $ map (!! i) positive_points | i <- [0..n-1]]
-                     getAssignment assign = case assign of
-                                        assign | (length assign) == 2 -> Unused
-                                               | True `elem` assign -> Used
-                                               | otherwise -> Negated
-                  in (satisfiesLiteral (map getAssignment assignments))
-        else (\x -> False)
+updateLiteral :: Literal -> Bool -> Literal
+updateLiteral Used True = Used
+updateLiteral Used False = Negated
+updateLiteral Negated True = Unused
+updateLiteral Negated False = Negated
+updateLiteral Unused _ = Unused
+
+updateLiteralVector :: BoolVector -> LiteralVector -> LiteralVector
+updateLiteralVector [] [] = []
+updateLiteralVector l [] = []
+updateLiteralVector [] b = []
+updateLiteralVector (b:otherBools) (l:otherLiterals) = (updateLiteral l b):(updateLiteralVector otherBools otherLiterals)
+
+pointsToBoolVector :: [BoolVector] -> Concept BoolVector Bool
+pointsToBoolVector dataList = let
+            newAssign = foldr (updateLiteralVector) (repeat Used) dataList
+         in (satisfiesLiteral newAssign)
+
+learnBoolVector :: [(BoolVector, Bool)] -> Concept BoolVector Bool
+learnBoolVector = (pointsToBoolVector . getPositivePoints)
 
 main = do
 
-  let intervalPAC = (getRandom, randomIntervalFn, learnInterval) :: PACTuple Float Bool
-  let boxPAC = (randomPoint, randomBoxFn, learnBoundingBox) :: PACTuple Point Bool
-  let boolPAC = (randomBoolVector 8, randomBoolVectorFn 8, learnBoolVector) :: PACTuple BoolVector Bool
+  let intervalPAC = (getRandom, randomInterval, learnInterval, 0.01) :: PACTuple Float Bool
+  let boxPAC = (randomPoint, randomBoxFn, learnBoundingBox, 0.01) :: PACTuple Point Bool
+  let boolPAC = 
+            \n -> ((randomBoolVector n), (randomBoolVectorFn n), learnBoolVector, 0.01) 
 
-  val <- pacEvaluate boolPAC 10
-
+  val <- estimateDelta (boolPAC 32) 100 10
   putStrLn (show val)
