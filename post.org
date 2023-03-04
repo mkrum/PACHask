@@ -5,59 +5,47 @@
 [[https://cs.nyu.edu/~mohri/mlbook/][Link to the book]]
 
 * Probably Approximately Correct (PAC) Learning
-PAC learning is a powerful framework for thinking about machine learning as well
-as the namesake for this website. 
 
-** Setup
+What can be learned? Are some things harder to learn than others? 
 
-First, we need some imports and a utility function for generating some random
-data. 
-#+BEGIN_SRC haskell
-{-# LANGUAGE MultiParamTypeClasses #-}                                                                                                                                                      
-{-# LANGUAGE TypeSynonymInstances #-}                                                                                                                                                       
-{-# LANGUAGE FlexibleInstances #-}                                                                                                                                                          
-                                                                                                                                                                                            
-import System.Random                                                                                                                                                                        
-import qualified Data.Set as Set                                                                                                                                                            
-                                                                                                                                                                                            
-type RandGen x = (StdGen -> (x, StdGen))                                                                                                                                                    
-                                                                                                                                                                                            
-chainGenerate :: Int -> RandGen x -> RandGen [x]                                                                                                                                            
-chainGenerate num valGenerator g = let                                                                                                                                                      
- chainGenerate genFun g = (val, g) : (chainGenerate genFun g1)                                                                                                                              
-                            where (val, g1) = genFun g                                                                                                                                      
- samples = take num (chainGenerate valGenerator g)                                                                                                                                          
- points = map fst samples                                                                                                                                                                   
- g1 = last $ map snd samples                                                                                                                                                                
- in (points, g1)                                                                                                                                                                            
+PAC learning is a powerful framework for thinking about machine learning and all
+of these questions. It also, fun fact, is the namesake for this website. The goal of this
+installment is to walk through some of the basic ideas of PAC learning by
+demonstration in Haskell.
 
-#+END_SRC
-What we want to learn is some concept $c$ within a larger space of concepts,
-$\mathcal{C}$. A concept is just a function that maps a instance of the input
-space $x \in \mathcal{X}$ to an instance of the output space $y \in
-\mathcal{y}$. In other words, 
+This post heavily relies on the first chapter of the book "Foundations of
+Machine Learning" and notes from a series of lectures given by Leslie Valiant.
 
+** Introduction
+
+Machine learning can be roughly described as a process of "learning" a model from
+a dataset. Let's make this a little more concrete. 
+
+We have an input space, $\mathcal{X}$. This is the underlying type that will
+use to represent our data. For example, if $\mathcal{X} = \mathbb{R}^2$, then
+our input is going to be two dimensional real numbers. 
+
+We have the output space, $\mathcal{Y}$. This could be a list of classes,
+(e.g. $\mathcal{Y} = \{\text{"cat"},  \text{"dog"} \}"$), or an estimated value for
+a regression problem (e.g. $\mathcal{Y} = \mathbb{R}$). For this introduction,
+we will focus on binary classification problems, $\mathcal{Y} = \{ 0, 1 \}$. 
+
+What we want to learn a function, or concept, that maps from the input space to
+the output space. Mathematically, 
 \begin{equation}
 c: \mathcal{X} \rightarrow \mathcal{Y}
 \end{equation}
-
-And in haskell, 
+In haskell, we can make a type synonym, 
 #+BEGIN_SRC haskell
 type Concept x y = x -> y
 #+END_SRC
+The concept $c$ will be part of a larger space of concepts
+$\mathcal{C}$. For example, 
 
-However, we don't have typically do not have access to the underlying concept
-class. Instead, we have a seperate of concepts that also define a mapping from
-$\mathcal{X}$ to $\mathcal{Y}$. We refer to this as our hypothesis space,
-$\mathcal{H}$.
-Our learning algorithm will take a set of samples $(x, y)$ and return a
-hypothesis $h \in \mathcal{H}$. We want t
+We will have some dataset, $S = ((x_1, y_1), \dots, (x_m, y_m))$. Each $x_i \sim
+\mathcal{D}$, where $\mathcal{D}$ is some distribution. Each label will be
+generated by some hidden conco
 
-#+BEGIN_SRC haskell
-class BoolPACConcept a x where                                                                                                                                                              
-    learn :: [(x, Bool)] -> a                                                                                                                                                               
-    apply :: a -> Concept x Bool  
-#+END_SRC
 
 #+BEGIN_SRC haskell
 labelData :: Concept x y -> [x] -> [(x, y)]                                                                                                                                                 
