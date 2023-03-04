@@ -1,5 +1,5 @@
 
-all: box interval boolvector
+all: boxPlot intervalPlot
 
 pac: PAC.hs
 	ghc PAC.hs
@@ -16,8 +16,15 @@ boolvector: boolvector.hs pac
 intervalData: interval
 	./interval > data/interval.dat
 
-boxData: interval
+boxData: box
 	./box > data/box.dat
 
 boolvectorData: boolvector
 	./boolvector > data/boolvector.dat
+
+intervalPlot: intervalData
+	gnuplot -s plots/interval.p
+
+boxPlot: boxData
+	gnuplot -s plots/box.p
+
