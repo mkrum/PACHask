@@ -31,14 +31,14 @@ data/bool8.dat: boolvector
 data/bool16.dat: boolvector
 	./boolvector 16 > data/bool16.dat
 
-intervalPlot: data/interval.dat plots/interval.p
+static/pac/interval.png: data/interval.dat plots/interval.p
 	gnuplot -s plots/interval.p
 
-plots/box.png: plots/box.p data/box.dat
+static/pac/box.png: plots/box.p data/box.dat
 	gnuplot -s plots/box.p
 
-plots/bool.png: data/bool2.dat data/bool4.dat data/bool8.dat data/bool16.dat plots/bool.p
+static/pac/bool.png: data/bool2.dat data/bool4.dat data/bool8.dat data/bool16.dat plots/bool.p
 	gnuplot -s plots/bool.p
 
-post.html: post.org plots/bool.png plots/interval.png plots/box.png
+post.html: post.org static/pac/bool.png static/pac/interval.png static/pac/box.png
 	emacsclient -e "(progn (find-file \"post.org\") (org-html-export-to-html) (kill-buffer))"

@@ -1,0 +1,1173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>A Big-O for Learning: Thinking with PAC Bounds</title>
+<meta name="generator" content="Org mode" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+  /*]]>*/-->
+</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<style type="text/css">
+ pre.src {background-color: #2E3440; color: #ECEFF4;}</style>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        displayAlign: "center",
+        displayIndent: "0em",
+
+        "HTML-CSS": { scale: 100,
+                        linebreaks: { automatic: "false" },
+                        webFont: "TeX"
+                       },
+        SVG: {scale: 100,
+              linebreaks: { automatic: "false" },
+              font: "TeX"},
+        NativeMML: {scale: 100},
+        TeX: { equationNumbers: {autoNumber: "AMS"},
+               MultLineWidth: "85%",
+               TagSide: "right",
+               TagIndent: ".8em"
+             }
+});
+</script>
+<script type="text/javascript"
+        src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS_HTML"></script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">A Big-O for Learning: Thinking with PAC Bounds</h1>
+<style>
+
+blockquote {
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #FFF8DC;
+    border-left: 2px solid #ffeb8e;
+    border-left-color: rgb(255, 228, 102);
+    display: block;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+    margin-inline-start: 40px;
+    margin-inline-end: 40px;
+}
+</style>
+
+<blockquote>
+<p>
+i think it’s ridiculous that computers have fans in them. you’re getting
+yourself worked up for no good reason. it’s either gonna be a 1 or a 0. just
+chill
+<a href="https://twitter.com/jon_bois/status/1400203045808447492">Jon Bois</a>
+</p>
+</blockquote>
+
+<p>
+One of the fundamental questions in computer science is understanding which
+problems are "harder" than others. The most commonly used tool in this regard is
+big-O notation. Big-O notation lets us understand how the amount of compute
+required to solve a problems scales with problem size. Being able to tell if a
+some algorithm is \(O(n)\) rather than \(O(n^n)\) or \(O(n!)\) is crucial to
+understanding what can be computed in nanoseconds or what might take millennia.
+</p>
+
+<p>
+Imagine if we could develop a similar notation for machine learning
+problems. Surely, some functions are also more difficult to learn than others
+just as some problems require more compute than others. What if we could analyze
+the difficulty of a problem using similar notation? What if instead of problem
+size, we could frame it in terms of data requirements? Much like algorithmic
+analysis, we could have an idea before even running our learning algorithm if
+something was even feasible to learn or how much data we might need in order to
+learn it well.
+</p>
+
+<p>
+PAC learning is a powerful framework for thinking about machine learning and all
+of these questions. It also, fun fact, is the namesake for this website. The
+goal of this installment is to walk through some of the basic ideas of PAC
+learning with some demonstrations to show how we can develop a similar sense of
+scaling for learning problems. We will look at two separate learning problems
+and use some big-O notation to better understand how learning difficulty scales
+with different factors. We will also verify these insights by experiment in
+haskell, verifying that our bounds do in fact hold.
+</p>
+
+<p>
+This installment heavily relies on the second chapter of the book <a href="https://cs.nyu.edu/~mohri/mlbook/">"Foundations
+of Machine Learning"</a> and notes from <a href="https://www.ekzhang.com/assets/pdf/CS_228_Notes.pdf">a series of lectures given by Leslie
+Valiant.</a>
+</p>
+
+<div id="outline-container-org9835fd2" class="outline-2">
+<h2 id="org9835fd2"><span class="section-number-2">1</span> Introduction to Probably Approximately Correct (PAC) Learning</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+First, lets try to define a framework for "machine learning." We have an input
+space, \(\mathcal{X}\). This is the underlying type that will use to represent the
+data that will be fed into our model. For example, if \(\mathcal{X} =
+\mathbb{R}^2\), then our input or raw data is going to be two dimensional real
+numbers.
+</p>
+
+<p>
+We have the output space, \(\mathcal{Y}\). This could be a list of classes,
+(e.g. \(\mathcal{Y} = \{\text{``cat''},  \text{``dog''} \}\)), or an estimated value for
+a regression problem (e.g. \(\mathcal{Y} = \mathbb{R}\)). For this installment,
+we will focus on binary classification problems, \(\mathcal{Y} = \{ 0, 1 \}\),
+which we will represent as booleans.
+</p>
+
+<p>
+What we want to learn is a function, or concept, that maps from the input space to
+the output space. Mathematically, 
+</p>
+\begin{equation}
+c: \mathcal{X} \rightarrow \mathcal{Y}
+\end{equation}
+
+<p>
+In haskell, we can make a type synonym for clarity,  
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #81A1C1;">type</span> <span style="color: #81A1C1;">Concept</span> x y <span style="color: #FFFFFF; font-weight: bold;">=</span> x <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> y
+</pre>
+</div>
+
+<p>
+In order to learn this function, will have some dataset, \(S = ((x_1, y_1),
+\dots, (x_m, y_m))\). Each \(x_i \sim \mathcal{D}\), where \(\mathcal{D}\) is some
+distribution. 
+</p>
+
+<p>
+In haskell, we will be using the <code>Control.Monad.Random</code> module for handling
+random numbers. Again, we can use a type alias to clean things up a bit. We will
+have our distribution, 
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #81A1C1;">type</span> <span style="color: #81A1C1;">Distribution</span> x <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Rand</span> <span style="color: #81A1C1;">StdGen</span> x
+</pre>
+</div>
+<p>
+From which we can sample a list of data points,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">sampleFrom</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Distribution</span> x <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Distribution</span> [x]                                         
+<span style="color: #FFFFFF; font-weight: bold;">sampleFrom</span> m dist <span style="color: #FFFFFF; font-weight: bold;">=</span> sequence (replicate m dist)     
+</pre>
+</div>
+<p>
+This function takes an integer \(m\) and a distribution and returns m samples from
+that distribution. Given a list of samples \(\in \mathcal{X}\), we can generate a
+dataset by simply applying the concept to all of the generated points.
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">labelData</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Concept</span> x y <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> [x] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> [(x, y)]                                                     
+<span style="color: #FFFFFF; font-weight: bold;">labelData</span> concept dataList <span style="color: #FFFFFF; font-weight: bold;">=</span> map (<span style="color: #FFFFFF; font-weight: bold;">\</span>x <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> (x, concept x)) dataList
+</pre>
+</div>
+<p>
+In other words, given a concept \(c\) and a list of \(m\) samples \(x_0, x_1, \dots,
+x_m\) s.t. \(x \in \mathcal{X}\), we can construct a dataset \(S\) as \((x_0, c(x_0)),
+(x_1, c(x_1)), \dots (x_m, c(x_m))\).
+</p>
+
+<p>
+Let's say we have a another concept, \(h\), defined over the same input and output
+space. More specifically, let's say that \(h\) is the resulting hypothesis of some
+learning process over data generated by \(c\). How can we evaluate how well it fit
+the data? Since \(\mathcal{Y}\) is a binary label, we can compute its error with
+respect \(h\) by measuring the probability that \(h\) and \(c\) disagree over
+\(\mathcal{D}\),
+</p>
+\begin{equation}
+R(h) = \mathbb{P}_{x \sim \mathcal{D}} [h(x) \ne c(x)]  = \mathbb{E}_{x \sim \mathcal{D}} [1_{h(x) \ne c(x)}]
+\end{equation}
+<p>
+\(R(h) = 1\) would mean \(h\) and \(c\) never agree while \(R(h) = 0\) would mean that
+\(h\) and \(c\) always agree. Note, that this doesn't mean that \(h\) and \(c\) are
+identical, or that \(h(x) = c(x) \forall x \in \mathcal{X}\), just that \(h\) and
+\(c\) give identical labels to data generated by \(\mathcal{D}\).
+</p>
+
+<p>
+Computing \(R(h)\) analytically is difficult, but it is easy to swap it out for an
+empirical estimate,
+</p>
+\begin{equation}
+\hat{R}_S(h) = \frac{1}{m} \sum^{m}_{i = 1} 1_{h(x_i) \ne c(x_i)}
+\end{equation}
+<p>
+We can compute this in haskell as well. First,
+given a labeled point \((x, y)\), we can check if \(c\) outputs the correct label as,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">isIncorrect</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> (<span style="color: #81A1C1;">Eq</span> y) <span style="color: #FFFFFF; font-weight: bold;">=&gt;</span> <span style="color: #81A1C1;">Concept</span> x y <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> (x, y) <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">isIncorrect</span> c (x, y) <span style="color: #FFFFFF; font-weight: bold;">=</span> (c x) <span style="color: #FFFFFF; font-weight: bold;">/=</span> y
+</pre>
+</div>
+<p>
+Then, we can apply this over an entire dataset and compute the portion of
+incorrectly labeled examples,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">errorOf</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> (<span style="color: #81A1C1;">Eq</span> y) <span style="color: #FFFFFF; font-weight: bold;">=&gt;</span> <span style="color: #81A1C1;">Concept</span> x y <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> [(x, y)] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Float</span>
+<span style="color: #FFFFFF; font-weight: bold;">errorOf</span> concept dataList <span style="color: #FFFFFF; font-weight: bold;">=</span> 
+    <span style="color: #81A1C1;">let</span> evalList <span style="color: #FFFFFF; font-weight: bold;">=</span> map (<span style="color: #FFFFFF; font-weight: bold;">\</span>x <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">if</span> isIncorrect concept x <span style="color: #81A1C1;">then</span> 1.0 <span style="color: #81A1C1;">else</span> 0.0) dataList
+        total <span style="color: #FFFFFF; font-weight: bold;">=</span> (fromIntegral <span style="color: #FFFFFF; font-weight: bold;">.</span> length) evalList
+     <span style="color: #81A1C1;">in</span> (sum evalList) <span style="color: #FFFFFF; font-weight: bold;">/</span> total
+</pre>
+</div>
+<p>
+By sampling a large enough set of labeled samples, we can use this function to
+get a high quality estimate of \(R(h)\). 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org8b1e04a" class="outline-2">
+<h2 id="org8b1e04a"><span class="section-number-2">2</span> Probably Approximately Correct Learning</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+Let's now fully define PAC Learning. Let's say \(h_{S}\) is the hypothesis
+returned by the learning algorithm after receiving a labeled sample \(S\). We can
+then define a PAC-learnable concept class as a concept class \(\mathcal{C}\) such
+that there exists an algorithm \(\mathcal{A}\) and a polynomial function \(p\) such
+that for any \(\epsilon > 0\) and \(\delta > 0\), for all distributions
+\(\mathcal{D}\) on \(\mathcal{X}\) and for any target concept \(c \in \mathcal{C}\),
+the following holds for any sample size \(m \ge p(\frac{1}{\epsilon},
+\frac{1}{\delta})\) <sup><a id="fnr.1" class="footref" href="#fn.1">1</a></sup>:
+</p>
+
+\begin{equation}
+\mathbb{P}_{S \sim \mathcal{D}}[R(h_S) \le \epsilon] \ge 1 - \delta
+\end{equation}
+
+<p>
+In other words, the probability of the learned hypothesis \(h_S\) from our
+polynomial time algorithm having an error less than \(\epsilon\) is greater than
+\(1 - \delta\). Or, \(h_S\) is <b>probably</b> (with probability \(\ge 1 - \delta\))
+<b>approximately correct</b> (error less than \(\epsilon\)).
+</p>
+
+<p>
+The first thing worth mentioning about this definition is that there are exactly
+zero constraints on \(\mathcal{D}\) other than it is consistent for our training
+and testing data. You should be able to concoct whatever tricky distribution you
+can think of, and the bound should still hold.
+</p>
+
+<p>
+The second thing worth noting is that learning is defined against a concept
+class that is known to the algorithm a priori. This is the most academic
+assumption made within this framework. Of course, we usually know very little
+about the class of function that generated the labels for our dataset. Consider
+this the upper bound of performance on data generated by these concept classes. 
+</p>
+
+<p>
+In haskell, we can then represent the PAC learning setup as a tuple containing:
+</p>
+<ol class="org-ol">
+<li>The distribution we will use to be sample points from \(\mathcal{X}\).</li>
+<li>A function to sample a hidden concept \(c\)</li>
+<li>A learning algorithm that takes a dataset \(S\) and returns a concept \(h_S\)</li>
+<li>The desired error, \(\epsilon\)</li>
+</ol>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #81A1C1;">type</span> <span style="color: #81A1C1;">PACTuple</span> x y <span style="color: #FFFFFF; font-weight: bold;">=</span> (<span style="color: #81A1C1;">Distribution</span> x, <span style="color: #81A1C1;">Distribution</span> (<span style="color: #81A1C1;">Concept</span> x y), [(x, y)] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Concept</span> x y, <span style="color: #81A1C1;">Float</span>)
+</pre>
+</div>
+<p>
+Given one of these tuples and a dataset size \(m\), we can evaluate whether or not
+the learning algorithm succeeds as,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">pacEvaluate</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">PACTuple</span> x <span style="color: #81A1C1;">Bool</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">IO</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">pacEvaluate</span> (distribution, generateConcept, learnFn, epsilon) m <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span>
+  <span style="color: #677691;">-- </span><span style="color: #677691;">Sample a hidden concept, c</span>
+  hiddenConcept <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> evalRandIO (generateConcept)
+  <span style="color: #677691;">-- </span><span style="color: #677691;">Create a set of training points, S</span>
+  trainPoints <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> evalRandIO (sampleFrom m distribution)
+  <span style="color: #677691;">-- </span><span style="color: #677691;">Create an evaluation set to estimate R(h_S)</span>
+  testPoints <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> evalRandIO (sampleFrom 10000 distribution)
+
+  <span style="color: #81A1C1;">let</span> labeledTrainPoints <span style="color: #FFFFFF; font-weight: bold;">=</span> labelData hiddenConcept trainPoins
+      labeledTestPoints <span style="color: #FFFFFF; font-weight: bold;">=</span> labelData hiddenConcept testPoints
+      <span style="color: #677691;">-- </span><span style="color: #677691;">Learn h_S </span>
+      hypothesis <span style="color: #FFFFFF; font-weight: bold;">=</span> learnFn labeledTrainPoints
+      <span style="color: #677691;">-- </span><span style="color: #677691;">Estimate its error</span>
+      measuredError <span style="color: #FFFFFF; font-weight: bold;">=</span> errorOf hypothesis labeledTestPoints
+      <span style="color: #677691;">-- </span><span style="color: #677691;">Check whether this error is less than the desired bound</span>
+      success <span style="color: #FFFFFF; font-weight: bold;">=</span> measuredError <span style="color: #FFFFFF; font-weight: bold;">&lt;=</span> epsilon
+
+  return success
+</pre>
+</div>
+<p>
+We can then empirically estimate the \(\delta\) for this algorithm by running the
+above process multiple times and computing the probability of success,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">estimateDelta</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">PACTuple</span> x <span style="color: #81A1C1;">Bool</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">IO</span> <span style="color: #81A1C1;">Float</span>
+<span style="color: #FFFFFF; font-weight: bold;">estimateDelta</span> pac m n <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span>
+  val <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> sequence [pacEvaluate pac m <span style="color: #FFFFFF; font-weight: bold;">|</span> x <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> [1<span style="color: #FFFFFF; font-weight: bold;">..</span>n]]
+  <span style="color: #81A1C1;">let</span> failures <span style="color: #FFFFFF; font-weight: bold;">=</span> map (<span style="color: #FFFFFF; font-weight: bold;">\</span>x <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">if</span> x <span style="color: #81A1C1;">then</span> 0.0 <span style="color: #81A1C1;">else</span> 1.0) val
+  <span style="color: #81A1C1;">let</span> mean <span style="color: #FFFFFF; font-weight: bold;">=</span> (sum failures) <span style="color: #FFFFFF; font-weight: bold;">/</span> (fromIntegral n)
+  return mean
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org6dfc87d" class="outline-2">
+<h2 id="org6dfc87d"><span class="section-number-2">3</span> How Does Dimension Affect Difficulty?</h2>
+<div class="outline-text-2" id="text-3">
+<p>
+Let's now use this framework to answer a very specific question about learning
+intervals. If we allow our intervals to be of arbitrary dimensions, how does the
+difficulty of the learning problem scale with the number of dimensions?
+</p>
+
+<p>
+Let's make this more concrete. We can start by working through the simplest
+example, one-dimensional intervals. Our input space is going to be one
+dimensional real numbers, \(\mathcal{X} = \mathbb{R}\), and our output space will
+still be binary. An interval will have a lower and upper bound, and it will only
+return \(c(x) = 1\) if \(x\) is within these bounds. We can represent this kind of
+function in haskell as,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">isInInterval</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Float</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Float</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Float</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">isInInterval</span> lower upper val <span style="color: #FFFFFF; font-weight: bold;">=</span> (val <span style="color: #FFFFFF; font-weight: bold;">&gt;=</span> lower) <span style="color: #FFFFFF; font-weight: bold;">&amp;&amp;</span> (val <span style="color: #FFFFFF; font-weight: bold;">&lt;=</span> upper)
+</pre>
+</div>
+<p>
+We can randomly construct an interval by sampling a lower and upper bound,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">randomBounds</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Distribution</span> (<span style="color: #81A1C1;">Float</span>, <span style="color: #81A1C1;">Float</span>)
+<span style="color: #FFFFFF; font-weight: bold;">randomBounds</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span>
+    valOne <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> getRandom
+    valTwo <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> getRandom
+    <span style="color: #81A1C1;">if</span> valOne <span style="color: #FFFFFF; font-weight: bold;">&lt;</span> valTwo
+        <span style="color: #81A1C1;">then</span> return (valOne, valTwo)
+        <span style="color: #81A1C1;">else</span> return (valTwo, valOne)
+</pre>
+</div>
+<p>
+And then applying our <code>isInInterval</code> function,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">randomInterval</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Distribution</span> (<span style="color: #81A1C1;">Float</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span>) 
+<span style="color: #FFFFFF; font-weight: bold;">randomInterval</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span>
+    (lower, upper) <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> randomBounds
+    return (isInInterval lower upper)
+</pre>
+</div>
+<p>
+Our initial goal is to develop a PAC-learning algorithm for this concept class. 
+</p>
+
+<p>
+Let's say we have a dataset \(S\) of labeled points by some hidden interval
+\(c\). If we construct a new \(h\), there are two types of ways it can be wrong:
+</p>
+<ol class="org-ol">
+<li>A false positive: \(h(x) = 1, c(x) = 0\)</li>
+<li>A false negative: \(h(x) = 0, c(x) = 1\)</li>
+</ol>
+<p>
+An obvious algorithm would be to take the points in \(S\), find the maximum point
+such that \(c(x) = 1\) and the minimum point such that \(c(x) = 1\) and use those as
+the bounds of the interval. We can implement this algorithm by first creating a
+function that only returns the positive examples in our training set, and then
+one that then uses those positive points to construct the interval.
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">getPositivePoints</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> [(x, <span style="color: #81A1C1;">Bool</span>)] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> [x]
+<span style="color: #FFFFFF; font-weight: bold;">getPositivePoints</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> (map fst) <span style="color: #FFFFFF; font-weight: bold;">.</span> (filter snd)
+
+<span style="color: #FFFFFF; font-weight: bold;">pointsToInterval</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> [<span style="color: #81A1C1;">Float</span>] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">Float</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">pointsToInterval</span> <span style="color: #81A1C1;">[]</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #FFFFFF; font-weight: bold;">\</span>x <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">False</span> 
+<span style="color: #FFFFFF; font-weight: bold;">pointsToInterval</span> positive_points <span style="color: #FFFFFF; font-weight: bold;">=</span> 
+        isInInterval (minimum positive_points) (maximum positive_points)
+
+<span style="color: #FFFFFF; font-weight: bold;">learnInterval</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> [(<span style="color: #81A1C1;">Float</span>, <span style="color: #81A1C1;">Bool</span>)] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">Float</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">learnInterval</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> (pointsToInterval <span style="color: #FFFFFF; font-weight: bold;">.</span> getPositivePoints)
+</pre>
+</div>
+
+<p>
+This intuitive algorithm has the nice property that it cannot generate any false
+positives. If we think about these two functions as forming sets of
+\(\mathcal{X}\) where \(f(x) = 1\), then we know that \(h_S \in c\).
+</p>
+
+<p>
+In other words, \(h_S\) will always define a slightly smaller interval than
+\(c\). For each concept \(f\), lets say the parameters of their intervals are \((l_f,
+u_f)\) where \(l_f\) corresponds to the lower bound of \(f\) and \(u_f\) corresponds to
+the upper bound of \(f\). The error between \(h\) and \(c\) is the probability that a
+point falls in the region between the outer bound of \(c\) and the inner bound of \(h\),
+</p>
+\begin{equation}
+R(h) = \mathbb{P}_{x \sim \mathcal{D}} [ x \in (l_c, l_h) \text{ or } x \in (u_h, u_c)]
+\end{equation}
+
+<p>
+Let's imagine two buffer regions, \(r_l\) and \(r_u\). \(r_l\) is the buffer on the
+lower region such that the probability of a point landing in \(r_l\) is
+\(\frac{\epsilon}{2}\). In other words, \(r_l = (l_c, z)\) where \(z\) is whatever
+value it takes so that
+</p>
+\begin{equation}
+\mathbb{P}_{x \sim \mathcal{D}} [ x \in r_l ] = \frac{\epsilon}{2} 
+\end{equation}
+<p>
+\(r_u\) is defined similarly, but for the upper region. Note that this region is
+independent of our \(h\). 
+</p>
+
+<p>
+Let's say that \(h_l < r_l\) and \(h_u > r_u\), which means our learned interval
+intersects with these buffer regions. We then know that,
+</p>
+\begin{align}
+R(h) &= \mathbb{P}_{x \sim \mathcal{D}} [ x \in (l_c, l_h) \text{ or } x \in (u_h, u_c)] \\
+     &= \mathbb{P}_{x \sim \mathcal{D}} [ x \in (l_c, l_h) ] + \mathbb{P}_{x \sim \mathcal{D}} [x \in (u_h, u_c)] \\
+     & \le \mathbb{P}_{x \sim \mathcal{D}} [ x \in r_l ] + \mathbb{P}_{x \sim \mathcal{D}} [x \in r_u] \\
+     & \le \frac{\epsilon}{2} + \frac{\epsilon}{2} \\
+     & \le \epsilon \\
+\end{align}
+<p>
+In other words, if both of the upper and lower bounds of our learned interval
+\(h\) fall in the buffer regions, we know that the error is less than
+\(\epsilon\). What is the probability of this happening? 
+</p>
+
+<p>
+We know that by definition for each buffer region, 
+</p>
+\begin{equation}
+\mathbb{P}_{x \sim \mathcal{D}} [ x \in r ] = \frac{\epsilon}{2}
+\end{equation}
+<p>
+That means that for every sample from \(\mathcal{D}\), the probability that the
+point <b>doesn't</b> fall in \(r\) is \(1 - \frac{\epsilon}{2}\). So the probability that
+all of our \(m\) points don't fall in the region is,
+</p>
+\begin{equation}
+\mathbb{P}_{x \sim \mathcal{D}} [ (h_S \not \in r) ] = (1 - \frac{\epsilon}{2})^m
+\end{equation}
+<p>
+What is the probability that both don't receive any points? Here, we can greatly
+simplify the analysis by using a union bound. For any two events \(A\) and \(B\),
+the probability of both \(A\) and \(B\) occurring is less than the sum of the
+probabilities of \(A\) and \(B\) individually. Or,
+</p>
+\begin{equation}
+P(A \cup B) \le P(A) + P(B)
+\end{equation}
+<p>
+Another fact that will prove useful is that \(1 - x \le \exp(-x)\) for all \(x \in
+\mathbb{R}\). We can then just say that,
+</p>
+\begin{align}
+\mathbb{P}_{x \sim \mathcal{D}} [ (x \not \in r_l) \cup (x \not \in r_u) ]  & \le 
+\mathbb{P}_{x \sim \mathcal{D}} [ (x \not \in r_l) ] + \mathbb{P}_{x \sim \mathcal{D}} [ (x \not \in r_u) ]  \\
+ & \le (1 - \frac{\epsilon}{2})^m + (1 - \frac{\epsilon}{2})^m \\
+ & \le 2 (1 - \frac{\epsilon}{2})^m \\
+ & \le 2 \exp( -m \epsilon / 2) \\
+\end{align}
+<p>
+This means that the probability that our learning algorithm will fail to produce
+a hypothesis with an error \(\le \epsilon\) is \(\le 2 \exp(-m \epsilon / 2)\). Or,
+in terms of our \(\delta\),
+</p>
+\begin{equation}
+ \delta \ge 2 \exp( -m \epsilon / 2) \\
+\end{equation}
+<p>
+We can then do some algebraic manipulation to show that
+</p>
+\begin{equation}
+m \ge \frac{2}{\epsilon} \log \frac{2}{\delta}
+\end{equation}
+<p>
+This means that for a given error value and desired probability of success, we
+can definitively say what the lower bound of the feasible dataset size is.
+</p>
+
+<p>
+Let's verify this bound by comparing with some empirical data. We can estimate
+the delta for a series of values of \(m\), and then plot that data. First, we need
+a function to get this data.
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">outputData</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">PACTuple</span> a <span style="color: #81A1C1;">Bool</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">IO</span> <span style="color: #81A1C1;">()</span>
+<span style="color: #FFFFFF; font-weight: bold;">outputData</span> pactuple n step max <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span>
+    <span style="color: #677691;">-- </span><span style="color: #677691;">Create the range of potential m values, the size of the training set</span>
+    <span style="color: #81A1C1;">let</span> mVals <span style="color: #FFFFFF; font-weight: bold;">=</span> [0,step<span style="color: #FFFFFF; font-weight: bold;">..</span>max]
+    <span style="color: #677691;">-- </span><span style="color: #677691;">For each m, estimate the delta with n samples</span>
+    val <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> sequence <span style="color: #FFFFFF; font-weight: bold;">$</span> [ estimateDelta pactuple m n <span style="color: #FFFFFF; font-weight: bold;">|</span> m <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> mVals]
+    <span style="color: #677691;">-- </span><span style="color: #677691;">Format the string for output</span>
+    <span style="color: #81A1C1;">let</span> both <span style="color: #FFFFFF; font-weight: bold;">=</span> zip val mVals
+        fmtString currentString (val, m) <span style="color: #FFFFFF; font-weight: bold;">=</span> 
+                currentString <span style="color: #FFFFFF; font-weight: bold;">++</span> (show m) <span style="color: #FFFFFF; font-weight: bold;">++</span> <span style="color: #677691;">" "</span> <span style="color: #FFFFFF; font-weight: bold;">++</span> (show val) <span style="color: #FFFFFF; font-weight: bold;">++</span> <span style="color: #677691;">"\n"</span>
+        outputString <span style="color: #FFFFFF; font-weight: bold;">=</span> foldl fmtString <span style="color: #677691;">""</span> both
+    putStrLn outputString
+</pre>
+</div>
+<p>
+We can then create a <code>PACTuple</code> for the interval and generate this data,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #81A1C1;">let</span> intervalPAC <span style="color: #FFFFFF; font-weight: bold;">=</span> (getRandom, randomInterval, learnInterval, 0.01) <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">PACTuple</span> <span style="color: #81A1C1;">Float</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">outputData</span> intervalPAC 300 25 600
+</pre>
+</div>
+<p>
+Plotting this data, we can see that it does in fact follow the bound.
+</p>
+
+
+<div id="org30f851e" class="figure">
+<p><img src="./plots/interval.png" alt="interval.png" />
+</p>
+</div>
+
+<p>
+It's worth taking a moment to reflect on what we just were able to prove. We
+were able to derive a probabilistic bound on the error based on the dataset size
+alone. Given a \(m\) and \(\epsilon\), you can predict what the probability of
+success of reaching that \(\epsilon\) is entirely irrespective of the underlying
+data distribution. Conversely, given an \(\epsilon\) and a \(\delta\), you can
+determine the \(m\) you need to guarantee you'll satisfy those constraints. 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org8e94703" class="outline-2">
+<h2 id="org8e94703"><span class="section-number-2">4</span> Boxes</h2>
+<div class="outline-text-2" id="text-4">
+<p>
+We can generalize the above case to higher dimensions by taking the union of
+intervals over different dimensions. For example, we can change from an interval
+to a axis-aligned box in two dimensions by taking the union of two intervals
+</p>
+
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #81A1C1;">type</span> <span style="color: #81A1C1;">Point</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> (<span style="color: #81A1C1;">Float</span>, <span style="color: #81A1C1;">Float</span>)
+
+<span style="color: #FFFFFF; font-weight: bold;">boxInterval</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">Float</span> <span style="color: #81A1C1;">Bool</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">Float</span> <span style="color: #81A1C1;">Bool</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">Point</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">boxInterval</span> xInterval yInterval <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #FFFFFF; font-weight: bold;">\</span>(x,y) <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> ((xInterval x) <span style="color: #FFFFFF; font-weight: bold;">&amp;&amp;</span> (yInterval y))
+</pre>
+</div>
+
+<p>
+Our input space here is now \(\mathbb{R}^2\), which we are referring to as the
+type <code>Point</code>. Our box is defined as an interval in the x dimension and an interval
+in the y dimension.  
+</p>
+
+<p>
+We can again randomly sample points and boxes in a very similar method to before,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">randomBox</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Distribution</span> (<span style="color: #81A1C1;">Point</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span>)
+<span style="color: #FFFFFF; font-weight: bold;">randomBox</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span> 
+    xInterval <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> randomInterval
+    yInterval <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> randomInterval
+    return (boxInterval xInterval yInterval)
+
+<span style="color: #FFFFFF; font-weight: bold;">randomPoint</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Distribution</span> <span style="color: #81A1C1;">Point</span>
+<span style="color: #FFFFFF; font-weight: bold;">randomPoint</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span>
+    valOne <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> getRandom
+    valTwo <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> getRandom
+    return (valOne, valTwo)
+</pre>
+</div>
+<p>
+And our learning function will require simply splitting up the learning problem
+into the two dimensions,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">pointsToBox</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> [<span style="color: #81A1C1;">Point</span>] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> (<span style="color: #81A1C1;">Point</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span>)
+<span style="color: #FFFFFF; font-weight: bold;">pointsToBox</span> <span style="color: #81A1C1;">[]</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #FFFFFF; font-weight: bold;">\</span>x <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">False</span>
+<span style="color: #FFFFFF; font-weight: bold;">pointsToBox</span> positive_points <span style="color: #FFFFFF; font-weight: bold;">=</span> 
+       <span style="color: #81A1C1;">let</span> xInterval <span style="color: #FFFFFF; font-weight: bold;">=</span> pointsToInterval (map fst positive_points)
+           yInterval <span style="color: #FFFFFF; font-weight: bold;">=</span> pointsToInterval (map snd positive_points)
+        <span style="color: #81A1C1;">in</span> boxInterval xInterval yInterval
+
+<span style="color: #FFFFFF; font-weight: bold;">learnBox</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> [(<span style="color: #81A1C1;">Point</span>, <span style="color: #81A1C1;">Bool</span>)] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">Point</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">learnBox</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> (pointsToBox <span style="color: #FFFFFF; font-weight: bold;">.</span> getPositivePoints)
+</pre>
+</div>
+<p>
+We can repeat the exact same mechanism of the proof before, but now we have two
+regions per dimension. If \(d\) is the dimension of the problem, we can adjust
+each potential error region to have probability \(\frac{\epsilon}{2d}\) to ensure
+they still sum to \(\epsilon\). Working through the analysis again with this
+modification, we get
+</p>
+\begin{equation}
+\delta \ge 2d \exp( -m \epsilon / (2d))
+\end{equation}
+<p>
+Before, we only cared about the one dimensional line (\(d = 1\)). Now,
+we have a box with \(d = 2\). We can again generate some empirical data and
+again confirm that this bound holds. 
+</p>
+
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #81A1C1;">let</span> boxPAC <span style="color: #FFFFFF; font-weight: bold;">=</span> (randomPoint, randomBox, learnBox, 0.01) <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">PACTuple</span> <span style="color: #81A1C1;">Point</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">outputData</span> boxPAC 300 25 1000
+</pre>
+</div>
+<p>
+Which we can plot again,
+</p>
+
+
+<div id="org870a0c6" class="figure">
+<p><img src="./plots/box.png" alt="box.png" />
+</p>
+</div>
+
+<p>
+More importantly, we can finally address the question we began with. We can
+rearrange the above expression to get,
+</p>
+\begin{equation}
+m \ge \frac{2d}{\epsilon} \log \frac{2d}{\delta}
+\end{equation}
+<p>
+This means that the total sample size required to reach a constant \(\epsilon\) and
+\(\delta\) is growing \(O(d \log d)\). 
+</p>
+</div>
+</div>
+
+<div id="outline-container-org50d6d87" class="outline-2">
+<h2 id="org50d6d87"><span class="section-number-2">5</span> Finite Concept Classes</h2>
+<div class="outline-text-2" id="text-5">
+<p>
+The previous proof relies on very specific geometric arguments and learning
+algorithms. What about something a little bit more general?
+</p>
+
+<p>
+Let's think about finite concept classes. These are classes, such as decision
+trees or programs with an upper limit in bits, which have a finite but usually
+very large number of possible concepts within the class. These functions can be
+much more expressive than the simple intervals we introduced in the last
+section.
+</p>
+
+<p>
+In fact, let's not even think about the learning function at all. Let's just
+assume we have some polynomial time algorithm that will return a concept that is
+consistent with the \(m\) samples in our dataset. Just based on this alone we can
+establish a PAC bound.
+</p>
+
+<p>
+To see how this works, lets work backwards. For our concept class \(\mathcal{H}\),
+lets define the set of concepts \(\mathcal{H}_{\epsilon}\) to be the "bad"
+concepts that have an error greater than \(\epsilon\). Or,
+</p>
+\begin{equation}
+\mathcal{H}_{\epsilon} = \{ R(h) > \epsilon | h \in \mathcal{H} \}
+\end{equation}
+
+<p>
+In order to avoid making any assumptions about the algorithm, we can just think
+about what the probability of any \(h \in \mathcal{H}_{\epsilon}\) being
+consistent with the \(m\) examples. This is a natural upper bound on the
+probability of the algorithm returning a hypothesis in \(\mathcal{H}_{\epsilon}\),
+since it cannot return a bad hypothesis if one does not exist.
+</p>
+
+<p>
+What is the probability a bad hypothesis would be consistent with our dataset
+\(S\)? Since we know \(R_S(h) \ge \epsilon\), we can use a similar argument to the
+previous proof and say that 
+</p>
+\begin{aligned}
+\mathbb{P}[ \hat{R_S}(h) = 0  | h \in \mathcal{H}_\epsilon ] && \le (1 - \epsilon)^m \\
+ \le e^{ -m \epsilon} \\
+\end{aligned}
+<p>
+But then what is the probability that any of the bad hypothesis will have
+\(\hat{R_S}(h) = 0\)? Now, we can again use the union bound again to say,
+</p>
+\begin{aligned}
+\mathbb{P}[\exists h \in \mathcal{H}_\epsilon \text{ s.t. } \hat{R_S}(h) = 0 ] 
+& \le \sum_{h \in \mathcal{H}_{\epsilon}} \mathbb{P} [\hat{R_s}(h = 0) | h \in \mathcal{H}_\epsilon ] \\
+& \le | \mathcal{H}_{\epsilon} | e^{-m \epsilon} \\
+\end{aligned}
+<p>
+But, we don't really know the size of \(| \mathcal{H}_{\epsilon} |\). However, we
+do know that \(| \mathcal{H}_{\epsilon} | \le | \mathcal{H} |\) since
+\(\mathcal{H}_{\epsilon} \subseteq \mathcal{H}\). That then means that,
+</p>
+\begin{aligned}
+\mathbb{P}[\exists h \in \mathcal{H}_\epsilon \text{ s.t. } \hat{R_S}(h) = 0 ] 
+& \le | \mathcal{H} | e^{-m \epsilon} \\
+\end{aligned}
+<p>
+Or, 
+</p>
+\begin{equation}
+\delta \le | \mathcal{H} | e^{-m \epsilon} 
+\end{equation}
+<p>
+We can then solve this expression for \(m\), using some algebraic manipulation
+</p>
+\begin{equation}
+m \ge \frac{1}{\epsilon} (\log (|\mathcal{H}|) - \log \delta ) 
+\end{equation}
+<p>
+This means the number of samples required is \(O(\log | \mathcal{H} | )\). 
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgaf7e4c1" class="outline-2">
+<h2 id="orgaf7e4c1"><span class="section-number-2">6</span> Boolean Conjunctions</h2>
+<div class="outline-text-2" id="text-6">
+<p>
+Let's work through an example of a finite hypothesis class, conjunctions over \(k\) literals
+of the form,
+</p>
+
+\begin{equation}
+x_1 \land x_3 \land \bar{x_4}
+\end{equation}
+
+<p>
+Each literal is either:
+</p>
+<ol class="org-ol">
+<li>Unused: the value of this literal is ignored</li>
+<li>Used: the value of this literal is part of the conjunction</li>
+<li>Negated: the negation of this literal is part of the conjunction</li>
+</ol>
+
+<p>
+The question we will try to answer is how the problem difficulty is affected by
+increasing the total number of literals. How much harder is the problem when you
+have 2 variables versus 16?
+</p>
+
+<p>
+We can start our implementation by adding some types,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #81A1C1;">type</span> <span style="color: #81A1C1;">BoolVector</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> [<span style="color: #81A1C1;">Bool</span>]
+<span style="color: #81A1C1;">type</span> <span style="color: #81A1C1;">LiteralVector</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> [<span style="color: #81A1C1;">Literal</span>]
+
+<span style="color: #81A1C1;">data</span> <span style="color: #81A1C1;">Literal</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Used</span> <span style="color: #FFFFFF; font-weight: bold;">|</span> <span style="color: #81A1C1;">Negated</span> <span style="color: #FFFFFF; font-weight: bold;">|</span> <span style="color: #81A1C1;">Unused</span>
+             <span style="color: #81A1C1;">deriving</span> (<span style="color: #81A1C1;">Eq</span>, <span style="color: #81A1C1;">Show</span>)
+</pre>
+</div>
+<p>
+We can then apply each Literal to a bool using,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">evalLiteral</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Literal</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">evalLiteral</span> <span style="color: #81A1C1;">Unused</span> <span style="color: #81A1C1;">_</span>  <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">True</span>
+<span style="color: #FFFFFF; font-weight: bold;">evalLiteral</span> <span style="color: #81A1C1;">Negated</span> x <span style="color: #FFFFFF; font-weight: bold;">=</span> not x
+<span style="color: #FFFFFF; font-weight: bold;">evalLiteral</span> <span style="color: #81A1C1;">Used</span> x    <span style="color: #FFFFFF; font-weight: bold;">=</span> x
+</pre>
+</div>
+<p>
+We can then recursively apply this to a list of bools using,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">satisfiesLiteral</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">LiteralVector</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">BoolVector</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">satisfiesLiteral</span> <span style="color: #81A1C1;">[]</span> <span style="color: #81A1C1;">[]</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">True</span>
+<span style="color: #FFFFFF; font-weight: bold;">satisfiesLiteral</span> l <span style="color: #81A1C1;">[]</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">False</span>
+<span style="color: #FFFFFF; font-weight: bold;">satisfiesLiteral</span> <span style="color: #81A1C1;">[]</span> b <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">False</span>
+<span style="color: #FFFFFF; font-weight: bold;">satisfiesLiteral</span> (l<span style="color: #81A1C1;">:</span>otherLiterals) (b<span style="color: #81A1C1;">:</span>otherBools) <span style="color: #FFFFFF; font-weight: bold;">=</span> (evalLiteral l b) <span style="color: #FFFFFF; font-weight: bold;">&amp;&amp;</span> satisfiesLiteral otherLiterals otherBools
+</pre>
+</div>
+<p>
+Generating random literals is a little more complicated than before. First we
+can write a function that randomly generates literals from a random Float.
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">floatToLiterval</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Float</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Literal</span>
+<span style="color: #FFFFFF; font-weight: bold;">floatToLiterval</span> val 
+  <span style="color: #FFFFFF; font-weight: bold;">|</span> val <span style="color: #FFFFFF; font-weight: bold;">&lt;=</span> 0.1 <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Used</span>
+  <span style="color: #FFFFFF; font-weight: bold;">|</span> val <span style="color: #FFFFFF; font-weight: bold;">&lt;=</span> 0.2 <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Negated</span>
+  <span style="color: #FFFFFF; font-weight: bold;">|</span> otherwise <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Unused</span>
+
+<span style="color: #FFFFFF; font-weight: bold;">randomLiteral</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Distribution</span> <span style="color: #81A1C1;">Literal</span>
+<span style="color: #FFFFFF; font-weight: bold;">randomLiteral</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span>
+    val <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> getRandom
+    return (floatToLiterval val)
+</pre>
+</div>
+<p>
+The numbers selected in <code>floatToLiteral</code> are arbitrary. We can then use this to
+sample some random literal expressions to use as our target,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">randomLiteralExpression</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Distribution</span> (<span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">BoolVector</span> <span style="color: #81A1C1;">Bool</span>)
+<span style="color: #FFFFFF; font-weight: bold;">randomLiteralExpression</span> n <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">do</span>
+          random_val <span style="color: #FFFFFF; font-weight: bold;">&lt;-</span> (sampleFrom n randomLiteral) 
+          return (satisfiesLiteral random_val)
+</pre>
+</div>
+<p>
+We can use the built in <code>getRandom</code> to sample booleans for the <code>BoolVector</code>.
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">randomBoolVector</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Int</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Distribution</span> <span style="color: #81A1C1;">BoolVector</span>
+<span style="color: #FFFFFF; font-weight: bold;">randomBoolVector</span> n <span style="color: #FFFFFF; font-weight: bold;">=</span> sampleFrom n getRandom
+</pre>
+</div>
+<p>
+Now, we need our learning function. All we need is a function that takes our
+data and returns a concept that could have potentially generated that data.
+</p>
+
+<p>
+We are going to write this is a similar manner to the way we wrote the
+<code>satisfiesLiteral</code> function. We will first define a local update for every boolean
+literal pair. We will start by initializing our potential function to be a list
+of <code>Used</code> literals. For every positive sample in \(S\), 
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">updateLiteral</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">Literal</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Bool</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Literal</span>
+<span style="color: #677691;">-- </span><span style="color: #677691;">If the Literal is Used and the boolean is True, don't change.</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteral</span> <span style="color: #81A1C1;">Used</span> <span style="color: #81A1C1;">True</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Used</span>
+<span style="color: #677691;">-- </span><span style="color: #677691;">If the Literal is Used and the boolean is False, the concept would have been wrong. Update to Negated.</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteral</span> <span style="color: #81A1C1;">Used</span> <span style="color: #81A1C1;">False</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Negated</span>
+<span style="color: #677691;">-- </span><span style="color: #677691;">If the Literal is Negated and the boolean is True, this literal has been both True and False for a postive sample. Must be Unused.</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteral</span> <span style="color: #81A1C1;">Negated</span> <span style="color: #81A1C1;">True</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Unused</span>
+<span style="color: #677691;">-- </span><span style="color: #677691;">If the Literal is Negated and the boolean is False, don't change.</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteral</span> <span style="color: #81A1C1;">Negated</span> <span style="color: #81A1C1;">False</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Negated</span>
+<span style="color: #677691;">-- </span><span style="color: #677691;">Once marked Unused, it will always be Unused.</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteral</span> <span style="color: #81A1C1;">Unused</span> <span style="color: #81A1C1;">_</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">Unused</span>
+</pre>
+</div>
+<p>
+We can then again recursively apply this update to a list of Booleans,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">updateLiteralVector</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> <span style="color: #81A1C1;">BoolVector</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">LiteralVector</span> <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">LiteralVector</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteralVector</span> <span style="color: #81A1C1;">[]</span> <span style="color: #81A1C1;">[]</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">[]</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteralVector</span> l <span style="color: #81A1C1;">[]</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">[]</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteralVector</span> <span style="color: #81A1C1;">[]</span> b <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">[]</span>
+<span style="color: #FFFFFF; font-weight: bold;">updateLiteralVector</span> (b<span style="color: #81A1C1;">:</span>otherBools) (l<span style="color: #81A1C1;">:</span>otherLiterals) <span style="color: #FFFFFF; font-weight: bold;">=</span> (updateLiteral l b)<span style="color: #81A1C1;">:</span>(updateLiteralVector otherBools otherLiterals)
+</pre>
+</div>
+<p>
+Then, we can define our learning function as a fold over the positive inputs,
+</p>
+<div class="org-src-container">
+<pre class="src src-haskell"><span style="color: #FFFFFF; font-weight: bold;">pointsToBoolVector</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> [<span style="color: #81A1C1;">BoolVector</span>] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">BoolVector</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">pointsToBoolVector</span> dataList <span style="color: #FFFFFF; font-weight: bold;">=</span> <span style="color: #81A1C1;">let</span>
+            newAssign <span style="color: #FFFFFF; font-weight: bold;">=</span> foldr (updateLiteralVector) (repeat <span style="color: #81A1C1;">Used</span>) dataList
+         <span style="color: #81A1C1;">in</span> (satisfiesLiteral newAssign)
+
+<span style="color: #FFFFFF; font-weight: bold;">learnLiteralExpression</span> <span style="color: #FFFFFF; font-weight: bold;">::</span> [(<span style="color: #81A1C1;">BoolVector</span>, <span style="color: #81A1C1;">Bool</span>)] <span style="color: #FFFFFF; font-weight: bold;">-&gt;</span> <span style="color: #81A1C1;">Concept</span> <span style="color: #81A1C1;">BoolVector</span> <span style="color: #81A1C1;">Bool</span>
+<span style="color: #FFFFFF; font-weight: bold;">learnLiteralExpression</span> <span style="color: #FFFFFF; font-weight: bold;">=</span> (pointsToBoolVector <span style="color: #FFFFFF; font-weight: bold;">.</span> getPositivePoints)
+</pre>
+</div>
+<p>
+One of the key parts of developing a PAC learning algorithm is to verify its run
+time is polynomial. Since we are doing a constant amount of work per sample,
+here we can just say its \(O(m)\). Let's now run the above algorithm for different
+sizes of literals and boolean vectors, corresponding to different \(|
+\mathcal{H} |\)
+</p>
+
+
+<div id="org079e708" class="figure">
+<p><img src="./plots/bool.png" alt="bool.png" />
+</p>
+</div>
+
+<p>
+Now that we've verified our ability to find consistent hypotheses, we can answer
+our initial question. We can just plug the value for \(| \mathcal{H} |\) into our
+bound to get the solution. Since there are \(k\) literals, and we have three
+different options for each literal, we can say
+</p>
+\begin{aligned}
+| \mathcal{H} | & = 3^k \\
+log | \mathcal{H} | & = \log 3^k \\
+& = k \log 3
+\end{aligned}
+<p>
+So in this case, m is \(O(\log | \mathcal{H} |) = O(k)\) where k is the number of literals. 
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-org1a7ca4f" class="outline-2">
+<h2 id="org1a7ca4f"><span class="section-number-2">7</span> Conclusion</h2>
+<div class="outline-text-2" id="text-7">
+<p>
+The whole point of this installment was to walk through the basics of PAC
+learning and give a few examples to help build some intuition. The main thing I
+hoped to emphasize was the ability of using PAC bounds to help think about the
+fundamentals limits of learning, and how we can use these bounds to understand
+what goes into problem difficulty in an empirical way. If you found these ideas
+interesting, I highly recommend looking into the resources I referenced in the
+beginning, along with <a href="https://mitpress.mit.edu/9780262111935/an-introduction-to-computational-learning-theory/">An Introduction to Computational Learning Theory</a>. 
+</p>
+</div>
+</div>
+<div id="footnotes">
+<h2 class="footnotes">Footnotes: </h2>
+<div id="text-footnotes">
+
+<div class="footdef"><sup><a id="fn.1" class="footnum" href="#fnr.1">1</a></sup> <div class="footpara"><p class="footpara">
+I am intentionally leaving out a full chunk of the definition here. The
+full PAC learning definition includes the requirement that \(m \ge
+p(\frac{1}{\epsilon}, \frac{1}{\delta}, n, size(c))\) where \(n\) is a number such
+that the computational cost of representing any element \(x \in \mathcal{X}\) is
+at most \(O(n)\) and size\((c)\) is the maximum cost of a representation of \(c \in
+\mathcal{C}\). The main reason for these additional constraints is to prevent the
+ability of developing PAC learning bounds that "hide away" some of the
+computation in the data structures for the input data or concept. Without this
+constraint, you could develop PAC learning algorithms for NP complete problems
+by cleverly defining data structures and concepts. However, since I am more a
+fan of mathematics than a mathematician I think its permissible to leave out of
+the full text. Sorry.
+</p></div></div>
+
+
+</div>
+</div></div>
+</body>
+</html>

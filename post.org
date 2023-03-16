@@ -1,33 +1,72 @@
 
-#+TITLE: PAC Learning By Example In Haskell
+#+TITLE: A Big-O for Learning: Thinking with PAC Bounds
 #+OPTIONS: toc:nil author:nil timestamp:nil 
 
-[[https://cs.nyu.edu/~mohri/mlbook/][Link to the book]]
+#+BEGIN_EXPORT html
+<style>
 
-* Probably Approximately Correct (PAC) Learning
+blockquote {
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #FFF8DC;
+    border-left: 2px solid #ffeb8e;
+    border-left-color: rgb(255, 228, 102);
+    display: block;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+    margin-inline-start: 40px;
+    margin-inline-end: 40px;
+}
+</style>
+#+END_EXPORT
 
-What can be learned? Are some things harder to learn than others? 
+#+begin_quote
+i think it’s ridiculous that computers have fans in them. you’re getting
+yourself worked up for no good reason. it’s either gonna be a 1 or a 0. just
+chill
+[[https://twitter.com/jon_bois/status/1400203045808447492][Jon Bois]]
+#+end_quote
+
+One of the fundamental questions in computer science is understanding which
+problems are "harder" than others. The most commonly used tool in this regard is
+big-O notation. Big-O notation lets us understand how the amount of compute
+required to solve a problems scales with problem size. Being able to tell if a
+some algorithm is $O(n)$ rather than $O(n^n)$ or $O(n!)$ is crucial to
+understanding what can be computed in nanoseconds or what might take millennia.
+
+Imagine if we could develop a similar notation for machine learning
+problems. Surely, some functions are also more difficult to learn than others
+just as some problems require more compute than others. What if we could analyze
+the difficulty of a problem using similar notation? What if instead of problem
+size, we could frame it in terms of data requirements? Much like algorithmic
+analysis, we could have an idea before even running our learning algorithm if
+something was even feasible to learn or how much data we might need in order to
+learn it well.
 
 PAC learning is a powerful framework for thinking about machine learning and all
-of these questions. It also, fun fact, is the namesake for this website. The goal of this
-installment is to walk through some of the basic ideas of PAC learning by
-demonstration in Haskell.
+of these questions. It also, fun fact, is the namesake for this website. The
+goal of this installment is to walk through some of the basic ideas of PAC
+learning with some demonstrations to show how we can develop a similar sense of
+scaling for learning problems. We will look at two separate learning problems
+and use some big-O notation to better understand how learning difficulty scales
+with different factors. We will also verify these insights by experiment in
+haskell, verifying that our bounds do in fact hold.
 
-This post heavily relies on the first chapter of the book "Foundations of
-Machine Learning" and notes from a series of lectures given by Leslie Valiant.
+This installment heavily relies on the second chapter of the book [[https://cs.nyu.edu/~mohri/mlbook/]["Foundations
+of Machine Learning"]] and notes from [[https://www.ekzhang.com/assets/pdf/CS_228_Notes.pdf][a series of lectures given by Leslie
+Valiant.]]
 
-** Introduction
+* Introduction to Probably Approximately Correct (PAC) Learning
 
-Machine learning can be roughly described as a process of "learning" a model from
-a dataset. Let's make this a little more concrete. 
-
-We have an input space, $\mathcal{X}$. This is the underlying type that will
-use to represent our data. For example, if $\mathcal{X} = \mathbb{R}^2$, then
-our input or raw data is going to be two dimensional real numbers. 
+First, lets try to define a framework for "machine learning." We have an input
+space, $\mathcal{X}$. This is the underlying type that will use to represent the
+data that will be fed into our model. For example, if $\mathcal{X} =
+\mathbb{R}^2$, then our input or raw data is going to be two dimensional real
+numbers.
 
 We have the output space, $\mathcal{Y}$. This could be a list of classes,
-(e.g. $\mathcal{Y} = \{\text{"cat"},  \text{"dog"} \}$), or an estimated value for
-a regression problem (e.g. $\mathcal{Y} = \mathbb{R}$). For this post,
+(e.g. $\mathcal{Y} = \{\text{``cat''},  \text{``dog''} \}$), or an estimated value for
+a regression problem (e.g. $\mathcal{Y} = \mathbb{R}$). For this installment,
 we will focus on binary classification problems, $\mathcal{Y} = \{ 0, 1 \}$,
 which we will represent as booleans.
 
@@ -52,7 +91,7 @@ have our distribution,
 #+BEGIN_SRC haskell
 type Distribution x = Rand StdGen x
 #+END_SRC
-From which we can i.i.d sample a list of data points,
+From which we can sample a list of data points,
 #+BEGIN_SRC haskell
 sampleFrom :: Int -> Distribution x -> Distribution [x]                                         
 sampleFrom m dist = sequence (replicate m dist)     
@@ -64,15 +103,15 @@ dataset by simply applying the concept to all of the generated points.
 labelData :: Concept x y -> [x] -> [(x, y)]                                                     
 labelData concept dataList = map (\x -> (x, concept x)) dataList
 #+END_SRC
-In other words, given a concept $c$, a list of $m$ samples $x_0, x_1, \dots,
+In other words, given a concept $c$ and a list of $m$ samples $x_0, x_1, \dots,
 x_m$ s.t. $x \in \mathcal{X}$, we can construct a dataset $S$ as $(x_0, c(x_0)),
-(x_1, c(x_1), \dots (x_m, c(x_m))$.
+(x_1, c(x_1)), \dots (x_m, c(x_m))$.
 
-Let's say we have another hypothesis concept, $h$, defined over the same input
-and output space. More specifically, let's say that $h$ is the result of some
+Let's say we have a another concept, $h$, defined over the same input and output
+space. More specifically, let's say that $h$ is the resulting hypothesis of some
 learning process over data generated by $c$. How can we evaluate how well it fit
-the data? Well this $\mathcal{Y}$ is a binary label, we can compute its error
-with respect $h$ by measuring the probability that $h$ and $c$ disagree over
+the data? Since $\mathcal{Y}$ is a binary label, we can compute its error with
+respect $h$ by measuring the probability that $h$ and $c$ disagree over
 $\mathcal{D}$,
 \begin{equation}
 R(h) = \mathbb{P}_{x \sim \mathcal{D}} [h(x) \ne c(x)]  = \mathbb{E}_{x \sim \mathcal{D}} [1_{h(x) \ne c(x)}]
@@ -87,7 +126,7 @@ empirical estimate,
 \begin{equation}
 \hat{R}_S(h) = \frac{1}{m} \sum^{m}_{i = 1} 1_{h(x_i) \ne c(x_i)}
 \end{equation}
-In haskell, we can perform this computation over a labeled set of data. First,
+We can compute this in haskell as well. First,
 given a labeled point $(x, y)$, we can check if $c$ outputs the correct label as,
 #+BEGIN_SRC haskell
 isIncorrect :: (Eq y) => Concept x y -> (x, y) -> Bool
@@ -103,48 +142,44 @@ errorOf concept dataList =
      in (sum evalList) / total
 #+END_SRC
 By sampling a large enough set of labeled samples, we can use this function to
-get an estimate of $R(h)$. 
+get a high quality estimate of $R(h)$. 
 
-** Probably Approximately Correct
+* Probably Approximately Correct Learning
 
-Let's now fully define PAC Learning. Let $n$ be a number such that the
-computational cost of representing any element $x \in \mathcal{X}$ is at most
-$O(n)$. Let's say size$(c)$ is the maximum cost of a representation of $c \in
-\mathcal{C}$. Let's say $h_{S}$ is the hypothesis returned by the learning
-algorithm after receiving a labeled sample $S$.
-
-We can then define a PAC-learnable concept class as a concept class
-$\mathcal{C}$ such that there exists an algorithm $\mathcal{A}$ and a polynomial
-function $p$ such that for any $\epsilon > 0$ and $\delta > 0$, for all
-distributions $\mathcal{D}$ on $\mathcal{X}$ and for any target concept $c \in
-\mathcal{C}$, the following holds for any sample size $m \ge
-p(\frac{1}{\epsilon}, \frac{1}{\delta}, n, size(c))$:
+Let's now fully define PAC Learning. Let's say $h_{S}$ is the hypothesis
+returned by the learning algorithm after receiving a labeled sample $S$. We can
+then define a PAC-learnable concept class as a concept class $\mathcal{C}$ such
+that there exists an algorithm $\mathcal{A}$ and a polynomial function $p$ such
+that for any $\epsilon > 0$ and $\delta > 0$, for all distributions
+$\mathcal{D}$ on $\mathcal{X}$ and for any target concept $c \in \mathcal{C}$,
+the following holds for any sample size $m \ge p(\frac{1}{\epsilon},
+\frac{1}{\delta})$ [fn:1]:
 
 \begin{equation}
 \mathbb{P}_{S \sim \mathcal{D}}[R(h_S) \le \epsilon] \ge 1 - \delta
 \end{equation}
 
-In other words, the probability of the learned hypothesis $h_S$ having an error
-less than $\epsilon$ is greater than $1 - \delta$. Or, $h_S$ is *probably* (with
-probability $\ge 1 - \delta$) *approximately correct* (error less than
-$\epsilon$). 
+In other words, the probability of the learned hypothesis $h_S$ from our
+polynomial time algorithm having an error less than $\epsilon$ is greater than
+$1 - \delta$. Or, $h_S$ is *probably* (with probability $\ge 1 - \delta$)
+*approximately correct* (error less than $\epsilon$).
 
-Things worth emphasizing:
-1. This is a *distribution-free model*. We made exactly zero assumptions about
-   $\mathcal{D}$. Any distribution we define over $\mathcal{X}$ is valid!
-2. The train and test samples are drawn i.i.d from the same
-   distribution. Without this assumption, everything would fall apart. And
-   learning would generally be impossible.
-3. Learning is defined against a *concept class*, not any specific concept, and
-   this class is known to the algorithm. This is likely the most unrealistic assumption.
+The first thing worth mentioning about this definition is that there are exactly
+zero constraints on $\mathcal{D}$ other than it is consistent for our training
+and testing data. You should be able to concoct whatever tricky distribution you
+can think of, and the bound should still hold.
+
+The second thing worth noting is that learning is defined against a concept
+class that is known to the algorithm a priori. This is the most academic
+assumption made within this framework. Of course, we usually know very little
+about the class of function that generated the labels for our dataset. Consider
+this the upper bound of performance on data generated by these concept classes. 
 
 In haskell, we can then represent the PAC learning setup as a tuple containing:
 1. The distribution we will use to be sample points from $\mathcal{X}$. 
 2. A function to sample a hidden concept $c$
 3. A learning algorithm that takes a dataset $S$ and returns a concept $h_S$
 4. The desired error, $\epsilon$
-
-In other words,
 #+BEGIN_SRC haskell
 type PACTuple x y = (Distribution x, Distribution (Concept x y), [(x, y)] -> Concept x y, Float)
 #+END_SRC 
@@ -182,12 +217,18 @@ estimateDelta pac m n = do
   return mean
 #+END_SRC 
 
-** PAC Learning Intervals
-Let's work through an example on a simple concept class, intervals. Our input
-space is going to be one dimensional real numbers, $\mathcal{X} =
-\mathbb{R}$, and our output space will still be binary. An interval will have a
-lower and upper bound, and it will only return $c(x) = 1$ if $x$ is within these
-bounds. We can represent this kind of function in haskell as,
+* How Does Dimension Affect Difficulty?
+
+Let's now use this framework to answer a very specific question about learning
+intervals. If we allow our intervals to be of arbitrary dimensions, how does the
+difficulty of the learning problem scale with the number of dimensions?
+   
+Let's make this more concrete. We can start by working through the simplest
+example, one-dimensional intervals. Our input space is going to be one
+dimensional real numbers, $\mathcal{X} = \mathbb{R}$, and our output space will
+still be binary. An interval will have a lower and upper bound, and it will only
+return $c(x) = 1$ if $x$ is within these bounds. We can represent this kind of
+function in haskell as,
 #+BEGIN_SRC haskell
 isInInterval :: Float -> Float -> Float -> Bool
 isInInterval lower upper val = (val >= lower) && (val <= upper)
@@ -209,7 +250,7 @@ randomInterval = do
     (lower, upper) <- randomBounds
     return (isInInterval lower upper)
 #+END_SRC 
-Our goal is to develop a PAC-learning algorithm for this concept class. 
+Our initial goal is to develop a PAC-learning algorithm for this concept class. 
 
 Let's say we have a dataset $S$ of labeled points by some hidden interval
 $c$. If we construct a new $h$, there are two types of ways it can be wrong:
@@ -217,9 +258,9 @@ $c$. If we construct a new $h$, there are two types of ways it can be wrong:
 2. A false negative: $h(x) = 0, c(x) = 1$
 An obvious algorithm would be to take the points in $S$, find the maximum point
 such that $c(x) = 1$ and the minimum point such that $c(x) = 1$ and use those as
-the bounds of the interval. We can implement this algorithm by composing a
-function that only returns the positive examples in our training set, and one
-that then uses those positive points to construct the interval,
+the bounds of the interval. We can implement this algorithm by first creating a
+function that only returns the positive examples in our training set, and then
+one that then uses those positive points to construct the interval.
 #+BEGIN_SRC haskell
 getPositivePoints :: [(x, Bool)] -> [x]
 getPositivePoints = (map fst) . (filter snd)
@@ -233,10 +274,9 @@ learnInterval :: [(Float, Bool)] -> Concept Float Bool
 learnInterval = (pointsToInterval . getPositivePoints)
 #+END_SRC
 
-This intuitive algorithm also has the nice property
-that we do not need to think about the potential for false positives. If we
-think about these two functions as forming sets of $\mathcal{X}$ where $f(x) =
-1$, then we know that $h_S \in c$. 
+This intuitive algorithm has the nice property that it cannot generate any false
+positives. If we think about these two functions as forming sets of
+$\mathcal{X}$ where $f(x) = 1$, then we know that $h_S \in c$.
 
 In other words, $h_S$ will always define a slightly smaller interval than
 $c$. For each concept $f$, lets say the parameters of their intervals are $(l_f,
@@ -257,7 +297,8 @@ value it takes so that
 $r_u$ is defined similarly, but for the upper region. Note that this region is
 independent of our $h$. 
 
-Let's say that $h_l \in r_l$ and $h_u \in r_u$. We then know that, 
+Let's say that $h_l < r_l$ and $h_u > r_u$, which means our learned interval
+intersects with these buffer regions. We then know that,
 \begin{align}
 R(h) &= \mathbb{P}_{x \sim \mathcal{D}} [ x \in (l_c, l_h) \text{ or } x \in (u_h, u_c)] \\
      &= \mathbb{P}_{x \sim \mathcal{D}} [ x \in (l_c, l_h) ] + \mathbb{P}_{x \sim \mathcal{D}} [x \in (u_h, u_c)] \\
@@ -301,6 +342,12 @@ in terms of our $\delta$,
 \begin{equation}
  \delta \ge 2 \exp( -m \epsilon / 2) \\
 \end{equation}
+We can then do some algebraic manipulation to show that
+\begin{equation}
+m \ge \frac{2}{\epsilon} \log \frac{2}{\delta}
+\end{equation}
+This means that for a given error value and desired probability of success, we
+can definitively say what the lower bound of the feasible dataset size is.
 
 Let's verify this bound by comparing with some empirical data. We can estimate
 the delta for a series of values of $m$, and then plot that data. First, we need
@@ -326,7 +373,7 @@ outputData intervalPAC 300 25 600
 #+END_SRC
 Plotting this data, we can see that it does in fact follow the bound.
 
-[[./plots/interval.png]]
+[[./static/pac/interval.png]]
 
 It's worth taking a moment to reflect on what we just were able to prove. We
 were able to derive a probabilistic bound on the error based on the dataset size
@@ -335,7 +382,7 @@ success of reaching that $\epsilon$ is entirely irrespective of the underlying
 data distribution. Conversely, given an $\epsilon$ and a $\delta$, you can
 determine the $m$ you need to guarantee you'll satisfy those constraints. 
 
-** Boxes
+* Boxes
 
 We can generalize the above case to higher dimensions by taking the union of
 intervals over different dimensions. For example, we can change from an interval
@@ -373,19 +420,20 @@ pointsToBox :: [Point] -> (Point -> Bool)
 pointsToBox [] = \x -> False
 pointsToBox positive_points = 
        let xInterval = pointsToInterval (map fst positive_points)
-            yInterval = pointsToInterval (map snd positive_points)
+           yInterval = pointsToInterval (map snd positive_points)
         in boxInterval xInterval yInterval
 
 learnBox :: [(Point, Bool)] -> Concept Point Bool
 learnBox = (pointsToBox . getPositivePoints)
 #+END_SRC
-We can generalize the proof above to depend on the dimensions of the
-intervals.
-
+We can repeat the exact same mechanism of the proof before, but now we have two
+regions per dimension. If $d$ is the dimension of the problem, we can adjust
+each potential error region to have probability $\frac{\epsilon}{2d}$ to ensure
+they still sum to $\epsilon$. Working through the analysis again with this
+modification, we get
 \begin{equation}
 \delta \ge 2d \exp( -m \epsilon / (2d))
 \end{equation}
-
 Before, we only cared about the one dimensional line ($d = 1$). Now,
 we have a box with $d = 2$. We can again generate some empirical data and
 again confirm that this bound holds. 
@@ -396,26 +444,81 @@ outputData boxPAC 300 25 1000
 #+END_SRC
 Which we can plot again,
 
-[[./plots/box.png]]
+[[./static/pac/box.png]]
 
-More importantly, this framework allows us to analyze how the dimension effects
-problem difficulty. We can rearrange the above expression to get,
-
+More importantly, we can finally address the question we began with. We can
+rearrange the above expression to get,
 \begin{equation}
 m \ge \frac{2d}{\epsilon} \log \frac{2d}{\delta}
 \end{equation}
-
 This means that the total sample size required to reach a constant $\epsilon$ and
-$\delta$ is growing $O(d \log d)$.
+$\delta$ is growing $O(d \log d)$. 
 
-** Boolean Conjunctions
-The previous proofs relied on some geometric properties of intervals. It is
-worth demonstrating that we can provide similar proofs for increasingly complex
-kinds of functions. For example, consider boolean conjunctions over $k$ literals
+* Finite Concept Classes
+The previous proof relies on very specific geometric arguments and learning
+algorithms. What about something a little bit more general?
+
+Let's think about finite concept classes. These are classes, such as decision
+trees or programs with an upper limit in bits, which have a finite but usually
+very large number of possible concepts within the class. These functions can be
+much more expressive than the simple intervals we introduced in the last
+section.
+
+In fact, let's not even think about the learning function at all. Let's just
+assume we have some polynomial time algorithm that will return a concept that is
+consistent with the $m$ samples in our dataset. Just based on this alone we can
+establish a PAC bound.
+
+To see how this works, lets work backwards. For our concept class $\mathcal{H}$,
+lets define the set of concepts $\mathcal{H}_{\epsilon}$ to be the "bad"
+concepts that have an error greater than $\epsilon$. Or,
+\begin{equation}
+\mathcal{H}_{\epsilon} = \{ R(h) > \epsilon | h \in \mathcal{H} \}
+\end{equation}
+
+In order to avoid making any assumptions about the algorithm, we can just think
+about what the probability of any $h \in \mathcal{H}_{\epsilon}$ being
+consistent with the $m$ examples. This is a natural upper bound on the
+probability of the algorithm returning a hypothesis in $\mathcal{H}_{\epsilon}$,
+since it cannot return a bad hypothesis if one does not exist.
+
+What is the probability a bad hypothesis would be consistent with our dataset
+$S$? Since we know $R_S(h) \ge \epsilon$, we can use a similar argument to the
+previous proof and say that 
+\begin{aligned}
+\mathbb{P}[ \hat{R_S}(h) = 0  | h \in \mathcal{H}_\epsilon ] && \le (1 - \epsilon)^m \\
+ \le e^{ -m \epsilon} \\
+\end{aligned}
+But then what is the probability that any of the bad hypothesis will have
+$\hat{R_S}(h) = 0$? Now, we can again use the union bound again to say,
+\begin{aligned}
+\mathbb{P}[\exists h \in \mathcal{H}_\epsilon \text{ s.t. } \hat{R_S}(h) = 0 ] 
+& \le \sum_{h \in \mathcal{H}_{\epsilon}} \mathbb{P} [\hat{R_s}(h = 0) | h \in \mathcal{H}_\epsilon ] \\
+& \le | \mathcal{H}_{\epsilon} | e^{-m \epsilon} \\
+\end{aligned}
+But, we don't really know the size of $| \mathcal{H}_{\epsilon} |$. However, we
+do know that $| \mathcal{H}_{\epsilon} | \le | \mathcal{H} |$ since
+$\mathcal{H}_{\epsilon} \subseteq \mathcal{H}$. That then means that,
+\begin{aligned}
+\mathbb{P}[\exists h \in \mathcal{H}_\epsilon \text{ s.t. } \hat{R_S}(h) = 0 ] 
+& \le | \mathcal{H} | e^{-m \epsilon} \\
+\end{aligned}
+Or, 
+\begin{equation}
+\delta \le | \mathcal{H} | e^{-m \epsilon} 
+\end{equation}
+We can then solve this expression for $m$, using some algebraic manipulation
+\begin{equation}
+m \ge \frac{1}{\epsilon} (\log (|\mathcal{H}|) - \log \delta ) 
+\end{equation}
+This means the number of samples required is $O(\log | \mathcal{H} | )$. 
+
+* Boolean Conjunctions
+Let's work through an example of a finite hypothesis class, conjunctions over $k$ literals
 of the form,
 
 \begin{equation}
-x_1 \land x_3 \land \not x_4
+x_1 \land x_3 \land \bar{x_4}
 \end{equation}
 
 Each literal is either:
@@ -423,30 +526,35 @@ Each literal is either:
 2. Used: the value of this literal is part of the conjunction
 3. Negated: the negation of this literal is part of the conjunction
 
-We can implement 
+The question we will try to answer is how the problem difficulty is affected by
+increasing the total number of literals. How much harder is the problem when you
+have 2 variables versus 16?
+
+We can start our implementation by adding some types,
 #+BEGIN_SRC haskell
-type BoolVector = [Bool]
-type LiteralVector = [Literal]
+  type BoolVector = [Bool]
+  type LiteralVector = [Literal]
 
-data Literal = Used | Negated | Unused
-             deriving (Eq, Show)
-
-evalLiteral :: Literal -> Bool -> Bool
-evalLiteral Unused _      = True
-evalLiteral Negated True  = False
-evalLiteral Negated False = True
-evalLiteral Used x        = x
-
-satisfiesLiteral :: LiteralVector -> BoolVector -> Bool
-satisfiesLiteral [] [] = True
-satisfiesLiteral l [] = False
-satisfiesLiteral [] b = False
-satisfiesLiteral (l:otherLiterals) (b:otherBools) = (evalLiteral l b) && satisfiesLiteral otherLiterals otherBools
+  data Literal = Used | Negated | Unused
+	       deriving (Eq, Show)
+#+END_SRC 
+We can then apply each Literal to a bool using,
+#+BEGIN_SRC haskell
+    evalLiteral :: Literal -> Bool -> Bool
+    evalLiteral Unused _  = True
+    evalLiteral Negated x = not x
+    evalLiteral Used x    = x
 #+END_SRC
-
-Generating random literals is a little more complicated, first we can write a
-function that randomly generates literals
-
+We can then recursively apply this to a list of bools using,
+#+BEGIN_SRC haskell
+    satisfiesLiteral :: LiteralVector -> BoolVector -> Bool
+    satisfiesLiteral [] [] = True
+    satisfiesLiteral l [] = False
+    satisfiesLiteral [] b = False
+    satisfiesLiteral (l:otherLiterals) (b:otherBools) = (evalLiteral l b) && satisfiesLiteral otherLiterals otherBools
+#+END_SRC
+Generating random literals is a little more complicated than before. First we
+can write a function that randomly generates literals from a random Float.
 #+BEGIN_SRC haskell
 floatToLiterval :: Float -> Literal
 floatToLiterval val 
@@ -459,7 +567,8 @@ randomLiteral = do
     val <- getRandom
     return (floatToLiterval val)
 #+END_SRC
-The numbers selected in =floatToLiteral= are arbitrary. We can then use this to 
+The numbers selected in =floatToLiteral= are arbitrary. We can then use this to
+sample some random literal expressions to use as our target,
 #+BEGIN_SRC haskell
 randomLiteralExpression :: Int -> Distribution (Concept BoolVector Bool)
 randomLiteralExpression n = do
@@ -471,15 +580,27 @@ We can use the built in =getRandom= to sample booleans for the =BoolVector=.
 randomBoolVector :: Int -> Distribution BoolVector
 randomBoolVector n = sampleFrom n getRandom
 #+END_SRC
-Now, we need our learning function. 
+Now, we need our learning function. All we need is a function that takes our
+data and returns a concept that could have potentially generated that data.
+
+We are going to write this is a similar manner to the way we wrote the
+=satisfiesLiteral= function. We will first define a local update for every boolean
+literal pair. We will start by initializing our potential function to be a list
+of =Used= literals. For every positive sample in $S$, 
 #+BEGIN_SRC haskell
-updateLiteral :: Literal -> Bool -> Literal
-updateLiteral Used True = Used
-updateLiteral Used False = Negated
-updateLiteral Negated True = Unused
-updateLiteral Negated False = Negated
-updateLiteral Unused _ = Unused
+  updateLiteral :: Literal -> Bool -> Literal
+  -- If the Literal is Used and the boolean is True, don't change.
+  updateLiteral Used True = Used
+  -- If the Literal is Used and the boolean is False, the concept would have been wrong. Update to Negated.
+  updateLiteral Used False = Negated
+  -- If the Literal is Negated and the boolean is True, this literal has been both True and False for a postive sample. Must be Unused.
+  updateLiteral Negated True = Unused
+  -- If the Literal is Negated and the boolean is False, don't change.
+  updateLiteral Negated False = Negated
+  -- Once marked Unused, it will always be Unused.
+  updateLiteral Unused _ = Unused
 #+END_SRC
+We can then again recursively apply this update to a list of Booleans,
 #+BEGIN_SRC haskell
 updateLiteralVector :: BoolVector -> LiteralVector -> LiteralVector
 updateLiteralVector [] [] = []
@@ -487,6 +608,7 @@ updateLiteralVector l [] = []
 updateLiteralVector [] b = []
 updateLiteralVector (b:otherBools) (l:otherLiterals) = (updateLiteral l b):(updateLiteralVector otherBools otherLiterals)
 #+END_SRC
+Then, we can define our learning function as a fold over the positive inputs,
 #+BEGIN_SRC haskell
 pointsToBoolVector :: [BoolVector] -> Concept BoolVector Bool
 pointsToBoolVector dataList = let
@@ -496,5 +618,46 @@ pointsToBoolVector dataList = let
 learnLiteralExpression :: [(BoolVector, Bool)] -> Concept BoolVector Bool
 learnLiteralExpression = (pointsToBoolVector . getPositivePoints)
 #+END_SRC
+One of the key parts of developing a PAC learning algorithm is to verify its run
+time is polynomial. Since we are doing a constant amount of work per sample,
+here we can just say its $O(m)$. Let's now run the above algorithm for different
+sizes of literals and boolean vectors, corresponding to different $|
+\mathcal{H} |$
 
-[[./plots/bool.png]]
+[[./static/pac/bool.png]]
+
+Now that we've verified our ability to find consistent hypotheses, we can answer
+our initial question. We can just plug the value for $| \mathcal{H} |$ into our
+bound to get the solution. Since there are $k$ literals, and we have three
+different options for each literal, we can say
+\begin{aligned}
+| \mathcal{H} | & = 3^k \\
+log | \mathcal{H} | & = \log 3^k \\
+& = k \log 3
+\end{aligned}
+So in this case, m is $O(\log | \mathcal{H} |) = O(k)$ where k is the number of literals. 
+
+
+* Conclusion
+
+The whole point of this installment was to walk through the basics of PAC
+learning and give a few examples to help build some intuition. The main thing I
+hoped to emphasize was the ability of using PAC bounds to help think about the
+fundamentals limits of learning, and how we can use these bounds to understand
+what goes into problem difficulty in an empirical way. If you found these ideas
+interesting, I highly recommend looking into the resources I referenced in the
+beginning, along with [[https://mitpress.mit.edu/9780262111935/an-introduction-to-computational-learning-theory/][An Introduction to Computational Learning Theory]]. 
+
+[fn:1] I am intentionally leaving out a full chunk of the definition here. The
+full PAC learning definition includes the requirement that $m \ge
+p(\frac{1}{\epsilon}, \frac{1}{\delta}, n, size(c))$ where $n$ is a number such
+that the computational cost of representing any element $x \in \mathcal{X}$ is
+at most $O(n)$ and size$(c)$ is the maximum cost of a representation of $c \in
+\mathcal{C}$. The main reason for these additional constraints is to prevent the
+ability of developing PAC learning bounds that "hide away" some of the
+computation in the data structures for the input data or concept. Without this
+constraint, you could develop PAC learning algorithms for NP complete problems
+by cleverly defining data structures and concepts. However, since I am more a
+fan of mathematics than a mathematician I think its permissible to leave out of
+the full text. Sorry.
+
